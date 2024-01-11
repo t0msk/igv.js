@@ -25,8 +25,3 @@ igv.css.map
 /config_demo.json
 /dev/oauth/oauthConfigPrivate.js
 /encode/
-/test/testShoebox.js
-/deployShoebox.sh
-/examples/shoebox.html
-/dev/shoebox/*
-/js/bigwig/bwReader_nochromtree.js

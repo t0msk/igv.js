@@ -6,6 +6,9 @@ class CombinedCaller{
     constructor(wigFeatures, binSize) {
         this.wigFeatures = wigFeatures
         this.binSize = binSize
+        // let fit_obj = this.get_fit()
+        // this.globalMean = fit_obj.globalMean
+        // this.globalStd = fit_obj.globalStd
     }
     get_fit(){
         var fit_info = new g_utils.GetFit(this.wigFeatures)
@@ -352,7 +355,7 @@ class CombinedCaller{
         return results
     }
 
-    formatDataStructure_BAF(feature_column, scaling_factor = -1) {
+    formatDataStructure_BAF(feature_column, scaling_factor = 2) {
         const baf1 = []
         const baf2 = []
         for (const [chr, wig] of Object.entries(this.wigFeatures)) {
@@ -364,10 +367,10 @@ class CombinedCaller{
                 
                 let value = sample[feature_column]
                 if (value != 0.5){
-                    baf2_value.value = scaling_factor * (1 - value)
+                    baf2_value.value = -2 * (1 - value)
                     baf2.push(baf2_value)
                 }
-                baf1_value.value = scaling_factor * value
+                baf1_value.value = -2 * value
                 baf1.push(baf1_value)
                     
             })

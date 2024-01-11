@@ -29,6 +29,7 @@ import TrackBase from "../trackBase.js"
 import IGVGraphics from "../igv-canvas.js"
 import paintAxis from "../util/paintAxis.js"
 import {IGVColor, StringUtils} from "../../node_modules/igv-utils/src/index.js"
+import MenuUtils from "../ui/menuUtils.js"
 import {createCheckbox} from "../igv-icons.js"
 import {scoreShade} from "../util/ucscUtils.js"
 import FeatureSource from "./featureSource.js"
@@ -482,7 +483,7 @@ class InteractionTrack extends TrackBase {
                 items.push(
                     {
                         object: $(createCheckbox(lut[arcType], arcType === this.arcType)),
-                        click: function arcTypeHandler() {
+                        click: () => {
                             this.arcType = arcType
                             this.trackView.repaintViews()
                         }
@@ -493,14 +494,14 @@ class InteractionTrack extends TrackBase {
 
         items.push({
             name: "Toggle arc direction",
-            click: function toggleArcDirectionHandler() {
+            click: () => {
                 this.arcOrientation = !this.arcOrientation
                 this.trackView.repaintViews()
             }
         })
         items.push({
             name: this.showBlocks ? "Hide Blocks" : "Show Blocks",
-            click: function blockVisibiltyHandler() {
+            click: () => {
                 this.showBlocks = !this.showBlocks
                 this.trackView.repaintViews()
             }
@@ -508,14 +509,15 @@ class InteractionTrack extends TrackBase {
 
 
         if (this.arcType === "proportional" || this.arcType === "inView" || this.arcType === "partialInView") {
-            items = items.concat(this.numericDataMenuItems())
+            // MenuUtils.numericDataMenuItems(this.trackView).forEach(item => items.push(item))
+            items = items.concat(MenuUtils.numericDataMenuItems(this.trackView))
         }
 
         if (this.browser.circularView) {
             items.push('<hr/>')
             items.push({
                 label: 'Add interactions to circular view',
-                click: function addInteractionsHandler() {
+                click: () => {
                     for (let viewport of this.trackView.viewports) {
                         this.addChordsForViewport(viewport.referenceFrame)
                     }

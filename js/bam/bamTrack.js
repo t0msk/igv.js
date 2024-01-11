@@ -30,6 +30,7 @@ import TrackBase from "../trackBase.js"
 import IGVGraphics from "../igv-canvas.js"
 import paintAxis from "../util/paintAxis.js"
 import {createCheckbox} from "../igv-icons.js"
+import MenuUtils from "../ui/menuUtils.js"
 import {PaletteColorTable} from "../util/colorPalletes.js"
 import {IGVColor, StringUtils} from "../../node_modules/igv-utils/src/index.js"
 import {makePairedAlignmentChords, makeSupplementalAlignmentChords, sendChords} from "../jbrowse/circularViewUtils.js"
@@ -37,18 +38,13 @@ import {isSecureContext} from "../util/igvUtils.js"
 import PairedEndStats from "./pairedEndStats.js"
 import {createBlatTrack, maxSequenceSize} from "../blat/blatTrack.js"
 import {reverseComplementSequence} from "../util/sequenceUtils.js"
-import {drawModifications} from "./mods/baseModificationCoverageRenderer.js"
-import BaseModificationRenderer from "./mods/baseModificationRenderer.js"
 
 const alignmentStartGap = 5
 const downsampleRowHeight = 5
 const DEFAULT_ALIGNMENT_COLOR = "rgb(185, 185, 185)"
 const DEFAULT_COVERAGE_COLOR = "rgb(150, 150, 150)"
 const DEFAULT_CONNECTOR_COLOR = "rgb(200, 200, 200)"
-const DEFAULT_HIGHLIGHT_COLOR = "#00ff00"
 const MINIMUM_BLAT_LENGTH = 20
-const bisulfiteColorFw1 = "rgb(195, 195, 195)"
-const bisulfiteColorRev1 = "rgb(195, 210, 195)"
 
 class BAMTrack extends TrackBase {
 
@@ -63,9 +59,10 @@ class BAMTrack extends TrackBase {
         showAllBases: false,
         showInsertions: true,
         showMismatches: true,
+        color: DEFAULT_ALIGNMENT_COLOR,
+        coverageColor: DEFAULT_COVERAGE_COLOR,
         height: 300,
-        coverageTrackHeight: 50,
-        colorBy: undefined
+        coverageTrackHeight: 50
     }
 
     constructor(config, browser) {
@@ -83,10 +80,6 @@ class BAMTrack extends TrackBase {
 
         this.alignmentTrack.setTop(this.coverageTrack, this.showCoverage)
 
-        if (!this.showAlignments) {
-            this._height = this.coverageTrackHeight
-        }
-
         // The sort object can be an array in the case of multi-locus view, however if multiple sort positions
         // are present for a given reference frame the last one will take precedence
         if (config.sort) {
@@ -98,11 +91,6 @@ class BAMTrack extends TrackBase {
             }
         }
 
-    }
-
-    setHighlightedReads(highlightedReads) {
-        this.alignmentTrack.setHighlightedReads(highlightedReads)
-        this.updateViews()
     }
 
     set height(h) {
@@ -267,10 +255,11 @@ class BAMTrack extends TrackBase {
 
     menuItemList() {
 
+
         // Start with overage track items
         let menuItems = []
 
-        menuItems = menuItems.concat(this.numericDataMenuItems())
+        menuItems = menuItems.concat(MenuUtils.numericDataMenuItems(this.trackView))
 
         // Color by items
         menuItems.push('<hr/>')
@@ -303,36 +292,30 @@ class BAMTrack extends TrackBase {
         }
 
         menuItems.push('<hr/>')
-
-        function showCoverageHandler() {
-            this.showCoverage = !this.showCoverage
-            adjustTrackHeight()
-            this.trackView.checkContentHeight()
-            this.trackView.repaintViews()
-        }
-
         menuItems.push({
             object: $(createCheckbox("Show Coverage", this.showCoverage)),
-            click: showCoverageHandler
+            click: () => {
+                this.showCoverage = !this.showCoverage
+                adjustTrackHeight()
+                this.trackView.checkContentHeight()
+                this.trackView.repaintViews()
+            }
         })
-
-        function showAlignmentHandler() {
-            this.showAlignments = !this.showAlignments
-            adjustTrackHeight()
-            this.trackView.checkContentHeight()
-            this.trackView.repaintViews()
-        }
-
         menuItems.push({
             object: $(createCheckbox("Show Alignments", this.showAlignments)),
-            click: showAlignmentHandler
+            click: () => {
+                this.showAlignments = !this.showAlignments
+                adjustTrackHeight()
+                this.trackView.checkContentHeight()
+                this.trackView.repaintViews()
+            }
         })
 
         // Show all bases
         menuItems.push('<hr/>')
         menuItems.push({
             object: $(createCheckbox("Show all bases", this.showAllBases)),
-            click: function showAllBasesHandler(){
+            click: () => {
                 this.showAllBases = !this.showAllBases
                 this.config.showAllBases = this.showAllBases
                 this.trackView.repaintViews()
@@ -343,7 +326,7 @@ class BAMTrack extends TrackBase {
         menuItems.push('<hr/>')
         menuItems.push({
             object: $(createCheckbox("Show mismatches", this.showMismatches)),
-            click: function showMismatchesHandler() {
+            click: () => {
                 this.showMismatches = !this.showMismatches
                 this.config.showMismatches = this.showMismatches
                 this.trackView.repaintViews()
@@ -353,9 +336,10 @@ class BAMTrack extends TrackBase {
         // Insertions
         menuItems.push({
             object: $(createCheckbox("Show insertions", this.showInsertions)),
-            click: function showInsertionsHandler() {
+            click: () => {
                 this.showInsertions = !this.showInsertions
                 this.config.showInsertions = this.showInsertions
+                const alignmentContainers = this.getCachedAlignmentContainers()
                 this.trackView.repaintViews()
             }
         })
@@ -363,7 +347,7 @@ class BAMTrack extends TrackBase {
         // Soft clips
         menuItems.push({
             object: $(createCheckbox("Show soft clips", this.showSoftClips)),
-            click: function showSoftClipsHandler() {
+            click: () => {
                 this.showSoftClips = !this.showSoftClips
                 this.config.showSoftClips = this.showSoftClips
                 this.featureSource.setShowSoftClips(this.showSoftClips)
@@ -380,7 +364,7 @@ class BAMTrack extends TrackBase {
             menuItems.push('<hr/>')
             menuItems.push({
                 object: $(createCheckbox("View as pairs", this.viewAsPairs)),
-                click: function viewAsPairsHandler() {
+                click: () => {
                     this.viewAsPairs = !this.viewAsPairs
                     this.config.viewAsPairs = this.viewAsPairs
                     this.featureSource.setViewAsPairs(this.viewAsPairs)
@@ -400,7 +384,7 @@ class BAMTrack extends TrackBase {
             if (this.alignmentTrack.hasPairs) {
                 menuItems.push({
                     label: 'Add discordant pairs to circular view',
-                    click: function discordantPairsHandler() {
+                    click: () => {
                         for (let viewport of this.trackView.viewports) {
                             this.addPairedChordsForViewport(viewport)
                         }
@@ -410,7 +394,7 @@ class BAMTrack extends TrackBase {
             if (this.alignmentTrack.hasSupplemental) {
                 menuItems.push({
                     label: 'Add split reads to circular view',
-                    click: function splitReadsHandler() {
+                    click: () => {
                         for (let viewport of this.trackView.viewports) {
                             this.addSplitChordsForViewport(viewport)
                         }
@@ -428,7 +412,7 @@ class BAMTrack extends TrackBase {
 
         menuItems.push({
             object: $(createCheckbox("expand", this.alignmentTrack.displayMode === "EXPANDED")),
-            click: function expandHandler() {
+            click: () => {
                 this.alignmentTrack.displayMode = "EXPANDED"
                 this.config.displayMode = "EXPANDED"
                 this.trackView.checkContentHeight()
@@ -438,7 +422,7 @@ class BAMTrack extends TrackBase {
 
         menuItems.push({
             object: $(createCheckbox("squish", this.alignmentTrack.displayMode === "SQUISHED")),
-            click: function squishHandler() {
+            click: () => {
                 this.alignmentTrack.displayMode = "SQUISHED"
                 this.config.displayMode = "SQUISHED"
                 this.trackView.checkContentHeight()
@@ -457,27 +441,20 @@ class BAMTrack extends TrackBase {
      * @returns {{init: undefined, name: undefined, click: clickHandler, object: (jQuery|HTMLElement|jQuery.fn.init)}}
      */
     colorByCB(menuItem, showCheck) {
-
         const $e = $(createCheckbox(menuItem.label, showCheck))
+        const clickHandler = (ev) => {
 
-        if (menuItem.key !== 'tag') {
-
-            function clickHandler() {
+            if (menuItem.key !== 'tag') {
                 if (menuItem.key === this.alignmentTrack.colorBy) {
                     this.alignmentTrack.colorBy = 'none'
                     this.config.colorBy = 'none'
+                    this.trackView.repaintViews()
                 } else {
                     this.alignmentTrack.colorBy = menuItem.key
                     this.config.colorBy = menuItem.key
+                    this.trackView.repaintViews()
                 }
-                this.trackView.repaintViews()
-            }
-
-            return {name: undefined, object: $e, click: clickHandler, init: undefined}
-        } else {
-
-            function dialogPresentationHandler(ev) {
-
+            } else {
                 this.browser.inputDialog.present({
                     label: 'Tag Name',
                     value: this.alignmentTrack.colorByTag ? this.alignmentTrack.colorByTag : '',
@@ -495,12 +472,12 @@ class BAMTrack extends TrackBase {
                         this.trackView.repaintViews()
                     }
                 }, ev)
-            }
 
-            return {name: undefined, object: $e, dialog: dialogPresentationHandler, init: undefined}
+            }
 
         }
 
+        return {name: undefined, object: $e, click: clickHandler, init: undefined}
     }
 
     /**
@@ -519,9 +496,6 @@ class BAMTrack extends TrackBase {
                 option: this.sortObject.option,
                 direction: this.sortObject.direction ? "ASC" : "DESC"
             }
-        }
-        if (this.alignmentTrack.highlightedReads) {
-            config.highlightedReads = Array.from(this.alignmentTrack.highlightedReads)
         }
 
         return config
@@ -582,6 +556,15 @@ class BAMTrack extends TrackBase {
         }
         const chords = makePairedAlignmentChords(inView)
         sendChords(chords, this, refFrame, 0.02)
+
+        // const chordSetColor = IGVColor.addAlpha("all" === refFrame.chr ? this.color : getChrColor(refFrame.chr), 0.02)
+        // const trackColor = IGVColor.addAlpha(this.color || 'rgb(0,0,255)', 0.02)
+        //
+        // // name the chord set to include track name and locus
+        // const encodedName = this.name.replaceAll(' ', '%20')
+        // const chordSetName = "all" === refFrame.chr ? encodedName :
+        //     `${encodedName} (${refFrame.chr}:${refFrame.start}-${refFrame.end}`
+        // this.browser.circularView.addChords(chords, {name: chordSetName, color: chordSetColor, trackColor: trackColor})
     }
 
     addSplitChordsForViewport(viewport) {
@@ -598,6 +581,15 @@ class BAMTrack extends TrackBase {
 
         const chords = makeSupplementalAlignmentChords(inView)
         sendChords(chords, this, refFrame, 0.02)
+
+        // const chordSetColor = IGVColor.addAlpha("all" === refFrame.chr ? this.color : getChrColor(refFrame.chr), 0.02)
+        // const trackColor = IGVColor.addAlpha(this.color || 'rgb(0,0,255)', 0.02)
+        //
+        // // name the chord set to include track name and locus
+        // const encodedName = this.name.replaceAll(' ', '%20')
+        // const chordSetName = "all" === refFrame.chr ? encodedName :
+        //     `${encodedName} (${refFrame.chr}:${refFrame.start}-${refFrame.end}`
+        // this.browser.circularView.addChords(chords, {name: chordSetName, color: chordSetColor, trackColor: trackColor})
     }
 }
 
@@ -654,7 +646,7 @@ class CoverageTrack {
         let color
         if (this.parent.coverageColor) {
             color = this.parent.coverageColor
-        } else if (this.parent.color && typeof this.parent.color !== "function") {
+        } else if (this.parent.color !== undefined && typeof this.parent.color !== "function") {
             color = IGVColor.darkenLighten(this.parent.color, -35)
         } else {
             color = DEFAULT_COVERAGE_COLOR
@@ -699,13 +691,7 @@ class CoverageTrack {
                 const x = Math.floor((bp - bpStart) / bpPerPixel)
 
                 const refBase = sequence[i]
-
-                if ("basemod2" === this.parent.colorBy || "basemod" === this.parent.colorBy) {
-                    //context, pX, pBottom, dX, barHeight, pos, alignmentContainer
-                    const threshold = 0.5   // TODD - parameter
-                    drawModifications(ctx, x, this.height, w, h, bp, alignmentContainer, this.parent.colorBy, threshold)
-
-                } else if (item.isMismatch(refBase)) {
+                if (item.isMismatch(refBase)) {
                     IGVGraphics.setProperties(ctx, {fillStyle: nucleotideColors[refBase]})
                     IGVGraphics.fillRect(ctx, x, y, w, h)
 
@@ -825,39 +811,12 @@ class AlignmentTrack {
         this.hideSmallIndels = config.hideSmallIndels
         this.indelSizeThreshold = config.indelSizeThreshold || 1
 
-        if (config.highlightedReads) {
-            this.setHighlightedReads(config.highlightedReads)
-        }
-        if (config.highlightColor) {
-            this.highlightColor = config.highlightColor
-        }
-
         this.hasPairs = false   // Until proven otherwise
         this.hasSupplemental = false
-
-    }
-
-    /**
-     * Lazy initialize a base modification renderer
-     *
-     * @returns {BaseModificationRenderer}
-     */
-    get baseModRenderer() {
-        if(!this._baseModRenderer) {
-            this._baseModRenderer = new BaseModificationRenderer(this)
-        }
-        return this._baseModRenderer
     }
 
     setTop(coverageTrack, showCoverage) {
         this.top = (0 === coverageTrack.height || false === showCoverage) ? 0 : (5 + coverageTrack.height)
-    }
-
-    setHighlightedReads(highlightedReads) {
-        if (!Array.isArray(highlightedReads) || !highlightedReads.every(i => typeof i === "string")) {
-            throw new Error("AlignmentTrack.setHighlightedReads() only accept array of strings")
-        }
-        this.highlightedReads = new Set(highlightedReads)
     }
 
     /**
@@ -1001,7 +960,7 @@ class AlignmentTrack {
 
         }
 
-        function drawSingleAlignment(alignment, y, alignmentHeight) {
+        function drawSingleAlignment(alignment, yRect, alignmentHeight) {
 
 
             if ((alignment.start + alignment.lengthOnRef) < bpStart || alignment.start > bpEnd) {
@@ -1040,7 +999,7 @@ class AlignmentTrack {
             }
 
             if (alignment.gaps) {
-                const yStrokedLine = y + alignmentHeight / 2
+                const yStrokedLine = yRect + alignmentHeight / 2
                 for (let gap of alignment.gaps) {
                     const sPixel = (gap.start - bpStart) / bpPerPixel
                     const ePixel = ((gap.start + gap.len) - bpStart) / bpPerPixel
@@ -1059,8 +1018,8 @@ class AlignmentTrack {
                     // Add gap width as text like Java IGV if it fits nicely and is a multi-base gap
                     if (this.showDeletionText && gap.len > 1 && lineWidth >= gapTextWidth + 8) {
                         const textStart = gapCenter - (gapTextWidth / 2)
-                        IGVGraphics.fillRect(ctx, textStart - 1, y - 1, gapTextWidth + 2, 12, {fillStyle: "white"})
-                        IGVGraphics.fillText(ctx, gapLenText, textStart, y + 10, {
+                        IGVGraphics.fillRect(ctx, textStart - 1, yRect - 1, gapTextWidth + 2, 12, {fillStyle: "white"})
+                        IGVGraphics.fillText(ctx, gapLenText, textStart, yRect + 10, {
                             'font': 'normal 10px monospace',
                             'fillStyle': this.deletionTextColor,
                         })
@@ -1095,15 +1054,15 @@ class AlignmentTrack {
                         const props = {fillStyle: this.insertionColor}
 
                         // Draw decorations like Java IGV to make an 'I' shape
-                        IGVGraphics.fillRect(ctx, xBlockStart - 2, y, widthBlock + 4, 2, props)
-                        IGVGraphics.fillRect(ctx, xBlockStart, y + 2, widthBlock, alignmentHeight - 4, props)
-                        IGVGraphics.fillRect(ctx, xBlockStart - 2, y + alignmentHeight - 2, widthBlock + 4, 2, props)
+                        IGVGraphics.fillRect(ctx, xBlockStart - 2, yRect, widthBlock + 4, 2, props)
+                        IGVGraphics.fillRect(ctx, xBlockStart, yRect + 2, widthBlock, alignmentHeight - 4, props)
+                        IGVGraphics.fillRect(ctx, xBlockStart - 2, yRect + alignmentHeight - 2, widthBlock + 4, 2, props)
 
                         // Show # of inserted bases as text if it's a multi-base insertion and the insertion block
                         // is wide enough to hold text (its size is capped at the text label size, but can be smaller
                         // if the browser is zoomed out and the insertion is small)
                         if (this.showInsertionText && insertionBlock.len > 1 && basePixelWidth > textPixelWidth) {
-                            IGVGraphics.fillText(ctx, insertLenText, xBlockStart + 1, y + 10, {
+                            IGVGraphics.fillText(ctx, insertLenText, xBlockStart + 1, yRect + 10, {
                                 'font': 'normal 10px monospace',
                                 'fillStyle': this.insertionTextColor,
                             })
@@ -1113,33 +1072,9 @@ class AlignmentTrack {
                 }
             }
 
-            for (let {bbox, baseColor, readChar} of basesToDraw) {
-                const threshold = 1.0 / 10.0
-                if (bpPerPixel <= threshold && bbox.height >= 8) {
-                    // render letter
-                    const fontHeight = Math.min(10, bbox.height)
-                    ctx.font = '' + fontHeight + 'px sans-serif'
-                    const center = bbox.x + (bbox.width / 2.0)
-                    IGVGraphics.strokeText(ctx, readChar, center - (ctx.measureText(readChar).width / 2), fontHeight - 1 + bbox.y, {strokeStyle: baseColor})
-                } else {
-
-                    // render colored block
-                    IGVGraphics.fillRect(ctx, bbox.x, bbox.y, bbox.width, bbox.height, {fillStyle: baseColor})
-                }
-            }
-
-            if("basemod2" === this.colorBy || "basemod" === this.parent.colorBy) {
-                const context = (
-                    {
-                        ctx,
-                        bpPerPixel,
-                        bpStart,
-                        bpEnd,
-                        pixelEnd: pixelWidth
-                    })
-                this.baseModRenderer.drawModifications(alignment, y, alignmentHeight, context, this.parent.colorBy)
-            }
-
+            basesToDraw.forEach(({bbox, baseColor, readChar}) => {
+                renderBlockOrReadChar(ctx, bpPerPixel, bbox, baseColor, readChar)
+            })
 
 
             function drawBlock(block, b) {
@@ -1159,18 +1094,12 @@ class AlignmentTrack {
 
                 const strokeOutline =
                     alignment.mq <= 0 ||
-                    this.selectedReadName === alignment.readName ||
-                    isSoftClip ||
-                    this.highlightedReads && this.highlightedReads.has(alignment.readName)
+                    this.highlightedAlignmentReadNamed === alignment.readName ||
+                    isSoftClip
 
                 let blockOutlineColor = outlineColor
-                if (this.selectedReadName === alignment.readName) {
-                    blockOutlineColor = 'red'
-                } else if (isSoftClip) {
-                    blockOutlineColor = 'rgb(50,50,50)'
-                } else if (this.highlightedReads && this.highlightedReads.has(alignment.readName)) {
-                    blockOutlineColor = this.highlightColor || DEFAULT_HIGHLIGHT_COLOR
-                }
+                if (this.highlightedAlignmentReadNamed === alignment.readName) blockOutlineColor = 'red'
+                else if (isSoftClip) blockOutlineColor = 'rgb(50,50,50)'
 
                 const lastBlockPositiveStrand = (true === alignment.strand && b === blocks.length - 1)
                 const lastBlockReverseStrand = (false === alignment.strand && b === 0)
@@ -1188,12 +1117,12 @@ class AlignmentTrack {
                             blockStartPixel,
                             blockStartPixel]
                         yListPixel = [
-                            y,
-                            y,
-                            y + (alignmentHeight / 2.0),
-                            y + alignmentHeight,
-                            y + alignmentHeight,
-                            y]
+                            yRect,
+                            yRect,
+                            yRect + (alignmentHeight / 2.0),
+                            yRect + alignmentHeight,
+                            yRect + alignmentHeight,
+                            yRect]
 
                     }
 
@@ -1207,12 +1136,12 @@ class AlignmentTrack {
                             blockEndPixel,
                             blockEndPixel]
                         yListPixel = [
-                            y,
-                            y,
-                            y + (alignmentHeight / 2.0),
-                            y + alignmentHeight,
-                            y + alignmentHeight,
-                            y]
+                            yRect,
+                            yRect,
+                            yRect + (alignmentHeight / 2.0),
+                            yRect + alignmentHeight,
+                            yRect + alignmentHeight,
+                            yRect]
 
                     }
                     IGVGraphics.fillPolygon(ctx, xListPixel, yListPixel, {fillStyle: alignmentColor})
@@ -1224,12 +1153,12 @@ class AlignmentTrack {
 
                 // Internal block
                 else {
-                    IGVGraphics.fillRect(ctx, blockStartPixel, y, blockWidthPixel, alignmentHeight, {fillStyle: alignmentColor})
+                    IGVGraphics.fillRect(ctx, blockStartPixel, yRect, blockWidthPixel, alignmentHeight, {fillStyle: alignmentColor})
 
                     if (strokeOutline) {
                         ctx.save()
                         ctx.strokeStyle = blockOutlineColor
-                        ctx.strokeRect(blockStartPixel, y, blockWidthPixel, alignmentHeight)
+                        ctx.strokeRect(blockStartPixel, yRect, blockWidthPixel, alignmentHeight)
                         ctx.restore()
                     }
                 }
@@ -1273,7 +1202,7 @@ class AlignmentTrack {
                                 blockBasesToDraw.push({
                                     bbox: {
                                         x: xPixel,
-                                        y: y,
+                                        y: yRect,
                                         width: widthPixel,
                                         height: alignmentHeight
                                     },
@@ -1327,8 +1256,7 @@ class AlignmentTrack {
                 chr: viewport.referenceFrame.chr,
                 position: Math.floor(clickState.genomicLocation),
                 option: option,
-                direction: direction,
-                sortAsPairs: viewport.trackView.track.viewAsPairs
+                direction: direction
             }
             this.parent.sortObject = newSortObject
             viewport.cachedFeatures.sortRows(newSortObject)
@@ -1337,7 +1265,6 @@ class AlignmentTrack {
         list.push('<b>Sort by...</b>')
         list.push({label: '&nbsp; base', click: () => sortByOption("BASE")})
         list.push({label: '&nbsp; read strand', click: () => sortByOption("STRAND")})
-        list.push({label: '&nbsp; start location', click: () => sortByOption("START")})
         list.push({label: '&nbsp; insert size', click: () => sortByOption("INSERT_SIZE")})
         list.push({label: '&nbsp; gap size', click: () => sortByOption("GAP_SIZE")})
         list.push({label: '&nbsp; chromosome of mate', click: () => sortByOption("MATE_CHR")})
@@ -1388,14 +1315,13 @@ class AlignmentTrack {
                         click: () => {
                             if (clickedAlignment.mate) {
                                 const referenceFrame = clickState.viewport.referenceFrame
-                                const chromosomeObject = this.browser.genome.getChromosome(clickedAlignment.mate.chr)
-                                if (chromosomeObject) {
-                                    this.selectedReadName = clickedAlignment.readName
+                                if (this.browser.genome.getChromosome(clickedAlignment.mate.chr)) {
+                                    this.highlightedAlignmentReadNamed = clickedAlignment.readName
                                     //this.browser.presentMultiLocusPanel(clickedAlignment, referenceFrame)
                                     const bpWidth = referenceFrame.end - referenceFrame.start
                                     const frameStart = clickedAlignment.mate.position - bpWidth / 2
                                     const frameEnd = clickedAlignment.mate.position + bpWidth / 2
-                                    this.browser.addMultiLocusPanel(chromosomeObject.name, frameStart, frameEnd, referenceFrame)
+                                    this.browser.addMultiLocusPanel(clickedAlignment.mate.chr, frameStart, frameEnd, referenceFrame)
                                 } else {
                                     this.browser.alert.present(`Reference does not contain chromosome: ${clickedAlignment.mate.chr}`)
                                 }
@@ -1561,9 +1487,8 @@ class AlignmentTrack {
             case "tag":
                 if (this.parent.color) {
                     return (typeof this.parent.color === "function") ? this.parent.color(alignment) : this.parent.color
-                } else {
-                    return DEFAULT_CONNECTOR_COLOR
                 }
+                return DEFAULT_CONNECTOR_COLOR
             default:
                 return this.getAlignmentColor(alignment)
 
@@ -1575,8 +1500,6 @@ class AlignmentTrack {
         let color = DEFAULT_ALIGNMENT_COLOR   // The default color if nothing else applies
         if (this.parent.color) {
             color = (typeof this.parent.color === "function") ? this.parent.color(alignment) : this.parent.color
-        } else {
-            color = DEFAULT_ALIGNMENT_COLOR
         }
         const option = this.colorBy
         switch (option) {
@@ -1650,39 +1573,6 @@ class AlignmentTrack {
 
         return color
 
-    }
-
-    get color() {
-        return this.parent.color
-    }
-
-    get showSortClips() {
-        return this.parent.showSoftClips
-    }
-
-    get showAllBases() {
-        return this.parent.showAllBases
-    }
-
-    get nucleotideColors() {
-        return this.browser.nucleotideColors
-    }
-
-    get minTemplateLength() {
-        return this.parent.minTemplateLength
-
-    }
-
-    get maxTemplateLength() {
-        return this.parent.maxTemplateLength
-    }
-
-    get colorBy() {
-        return this.parent.colorBy
-    }
-
-    set colorBy(option) {
-        this.parent.colorBy = option
     }
 }
 

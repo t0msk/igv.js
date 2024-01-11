@@ -57,9 +57,6 @@ class ROISet {
             // this.headerColor = `rgba(${ r },${ g },${ b },${ 1.0 })`
 
         }
-
-        this.isVisible = undefined === config.isVisible ? true : config.isVisible
-
     }
 
     async getFeatures(chr, start, end) {
@@ -88,7 +85,7 @@ class ROISet {
 
     toJSON() {
         if (this.url) {
-            return {name: this.name, color: this.color, url: this.url, isUserDefined: this.isUserDefined, isVisible: this.isVisible}
+            return {name: this.name, color: this.color, url: this.url, isUserDefined: this.isUserDefined}
         } else {
             const featureMap = this.featureSource.getAllFeatures()
             const features = []
@@ -97,7 +94,7 @@ class ROISet {
                     features.push(f)
                 }
             }
-            return {name: this.name, color: this.color, features: features, isUserDefined: this.isUserDefined, isVisible: this.isVisible}
+            return {name: this.name, color: this.color, features: features, isUserDefined: this.isUserDefined}
         }
     }
 

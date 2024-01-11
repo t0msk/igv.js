@@ -12,12 +12,6 @@ $igv-navbar-button-border-radius: 6px;
 
 $igv-navbar-locus-search-height: $igv-navbar-height - 10px;
 
-$igv-navbar-icon-button-size: 24px;
-
-$igv-save-image-y-origin: 1.5 * $igv-navbar-icon-button-size;
-$igv-save-svg-image-x-origin: -3*$igv-navbar-icon-button-size/4;
-$igv-save-png-image-x-origin:  3*$igv-navbar-icon-button-size/4;
-
 .igv-navbar {
 
   display: flex;
@@ -27,7 +21,8 @@ $igv-save-png-image-x-origin:  3*$igv-navbar-icon-button-size/4;
   align-items: center;
 
   box-sizing: border-box;
-  width: 100%;
+  width: 100%
+;
   color: #444;
   font-size: $igv-navbar-font-size;
   font-family: $igv-default-font-face;
@@ -136,7 +131,7 @@ $igv-save-png-image-x-origin:  3*$igv-navbar-icon-button-size/4;
           justify-content: flex-start;
           align-items: center;
 
-          width: 240px;
+          width: 210px;
           height: $igv-navbar-locus-search-height;
           line-height: $igv-navbar-locus-search-height;
 
@@ -172,13 +167,6 @@ $igv-save-png-image-x-origin:  3*$igv-navbar-icon-button-size/4;
             cursor: pointer;
             height: 16px;
             width: 16px;
-
-            display: flex;
-            flex-flow: row;
-            flex-wrap: nowrap;
-            justify-content: center;
-            align-items: center;
-
           }
 
         }
@@ -202,25 +190,33 @@ $igv-save-png-image-x-origin:  3*$igv-navbar-icon-button-size/4;
     justify-content: space-between;
     align-items: center;
 
+    height: $igv-navbar-height;
+    line-height: $igv-navbar-height;
+
     .igv-navbar-toggle-button-container {
-      position: relative;
-      display: flex;
-      flex-flow: row;
-      flex-wrap: nowrap;
-      justify-content: flex-end;
-      align-items: center;
-    }
-
-    .igv-navbar-toggle-button-container-hidden {
 
       display: flex;
       flex-flow: row;
       flex-wrap: nowrap;
-      justify-content: flex-start;
+      justify-content: space-between;
       align-items: center;
 
       height: 100%;
 
+      div {
+        margin-left: 0;
+        margin-right: 4px;
+      }
+
+      div:last-child {
+        margin-left: 0;
+        margin-right: 0;
+      }
+
+    }
+
+    .igv-navbar-toggle-button-container-750 {
+      display: none;
     }
 
     .igv-zoom-widget {
@@ -229,8 +225,8 @@ $igv-save-png-image-x-origin:  3*$igv-navbar-icon-button-size/4;
 
       font-size: 18px;
 
-      //height: $igv-navbar-height;
-      //line-height: $igv-navbar-height;
+      height: $igv-navbar-height;
+      line-height: $igv-navbar-height;
 
       margin-left: 8px;
 
@@ -251,18 +247,20 @@ $igv-save-png-image-x-origin:  3*$igv-navbar-icon-button-size/4;
 
       // zoom-out
       div:first-child {
-        height: 20px;
-        width: 20px;
+        height: 24px;
+        width: 24px;
         margin-left: unset;
-        margin-right: 4px;
+        margin-right: 8px;
+        //background-color: magenta;
       }
 
       // zoom-in
       div:last-child {
-        height: 20px;
-        width: 20px;
-        margin-left: 4px;
+        height: 24px;
+        width: 24px;
+        margin-left: 8px;
         margin-right: unset;
+        //background-color: lime;
       }
 
       div:nth-child(even) {
@@ -301,26 +299,26 @@ $igv-save-png-image-x-origin:  3*$igv-navbar-icon-button-size/4;
       justify-content: flex-end;
       align-items: center;
 
-      // container: zoom-out | zoom-slider | zoom-in
+
       div {
         cursor: pointer;
         margin-left: unset;
         margin-right: unset;
       }
 
-      // zoom-out
+      // "-" zoom button
       div:first-child {
-        height: 20px;
-        width: 20px;
+        height: 24px;
+        width: 24px;
         margin-left: unset;
-        margin-right: 4px;
+        margin-right: 8px;
       }
 
-      // zoom-in
+      // "+" zoom button
       div:last-child {
-        height: 20px;
-        width: 20px;
-        margin-left: 4px;
+        height: 24px;
+        width: 24px;
+        margin-left: 8px;
         margin-right: unset;
       }
 
@@ -382,188 +380,11 @@ $igv-save-png-image-x-origin:  3*$igv-navbar-icon-button-size/4;
   border-radius: $igv-navbar-button-border-radius;
 }
 
-.igv-navbar-button:hover {
-  cursor: pointer;
-}
-
 .igv-navbar-button-clicked {
   color: white;
   background-color: $igv-navbar-toggle-dark-dark;
 }
 
-.igv-navbar-icon-button {
+.igv-navbar-button:hover {
   cursor: pointer;
-  //z-index: 2048;
-
-  position: relative;
-  width: $igv-navbar-icon-button-size;
-  height: $igv-navbar-icon-button-size;
-  margin-left: 4px;
-  margin-right: 4px;
-  border: none;
-
-  background-size: contain;
-  background-repeat: no-repeat;
-  background-position: center;
-
-  >div:first-child {
-
-    z-index: 512;
-
-    position: absolute;
-    top: $igv-save-image-y-origin;
-    left: $igv-save-svg-image-x-origin;
-
-    width: $igv-navbar-icon-button-size;
-    height: $igv-navbar-icon-button-size;
-
-    border: none;
-    background-size: contain;
-    background-repeat: no-repeat;
-    background-position: center;
-  }
-
-  >div:last-child {
-
-    z-index: 512;
-
-    position: absolute;
-    top: $igv-save-image-y-origin;
-    left: $igv-save-png-image-x-origin;
-
-    width: $igv-navbar-icon-button-size;
-    height: $igv-navbar-icon-button-size;
-
-    border: none;
-    background-size: contain;
-    background-repeat: no-repeat;
-    background-position: center;
-  }
-}
-
-.igv-navbar-text-button {
-  cursor: pointer;
-  //z-index: 2049;
-
-  position: relative;
-  //width: 90px;
-  //height: 20px;
-  margin-left: 2px;
-  margin-right: 2px;
-  border: none;
-
-  // to position svg properly
-  display: flex;
-  justify-content: center;
-  align-items: center;
-
-  >div:nth-child(2) {
-
-    z-index: 512;
-
-    position: absolute;
-    top: $igv-save-image-y-origin;
-    left: 0;
-
-    width: 38px;
-    height: 18px;
-
-    border: none;
-    background-size: contain;
-    background-repeat: no-repeat;
-    background-position: center;
-  }
-
-  >div:nth-child(3) {
-
-    z-index: 512;
-
-    position: absolute;
-    top: $igv-save-image-y-origin;
-    left: 42px;
-
-    width: 38px;
-    height: 18px;
-
-    border: none;
-    background-size: contain;
-    background-repeat: no-repeat;
-    background-position: center;
-  }
-
-}
-
-#igv-text-button-label {
-  text-anchor: middle;
-  dominant-baseline: middle;
-}
-
-.igv-navbar-text-button-svg-inactive {
-  rect {
-    stroke: #737373;
-    fill: white;
-  }
-  text {
-    fill: #737373;
-  }
-  tspan {
-    dominant-baseline: middle;
-  }
-}
-
-.igv-navbar-text-button-svg-hover {
-  rect {
-    stroke: #737373;
-    fill: #737373;
-  }
-  text {
-    fill: white;
-  }
-  tspan {
-    dominant-baseline: middle;
-  }
-}
-
-#igv-save-svg-group {
-  rect {
-    stroke: #737373;
-    fill: white;
-  }
-  text {
-    fill: #737373;
-  }
-
-}
-
-#igv-save-svg-group:hover {
-  rect {
-    stroke: #737373;
-    fill: #737373;
-  }
-  text {
-    fill: white;
-  }
-
-}
-
-#igv-save-png-group {
-  rect {
-    stroke: #737373;
-    fill: white;
-  }
-  text {
-    fill: #737373;
-  }
-
-}
-
-#igv-save-png-group:hover {
-  rect {
-    stroke: #737373;
-    fill: #737373;
-  }
-  text {
-    fill: white;
-  }
-
 }

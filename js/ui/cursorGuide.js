@@ -1,6 +1,5 @@
 
 import {DOMUtils} from "../../node_modules/igv-ui/dist/igv-ui.js"
-import {StringUtils} from "../../node_modules/igv-utils/src/index.js"
 
 class CursorGuide {
 
@@ -27,48 +26,39 @@ class CursorGuide {
 
         function mouseMoveHandler(event) {
 
-            const tag = event.target.tagName
-
             const {x, y} = DOMUtils.translateMouseCoordinates(event, this.columnContainer)
             this.horizontalGuide.style.top = `${y}px`
 
-            if ('CANVAS' === event.target.tagName) {
+            const target = document.elementFromPoint(event.clientX, event.clientY)
 
-                const viewport = findAncestorOfClass(event.target, 'igv-viewport')
+            const viewport = findAncestorOfClass(target, 'igv-viewport')
 
-                if (viewport && browser.getRulerTrackView()) {
+            if (viewport && browser.getRulerTrackView()) {
 
-                    this.verticalGuide.style.left = `${x}px`
+                this.verticalGuide.style.left = `${x}px`
 
-                    const columns = browser.root.querySelectorAll('.igv-column')
-                    let index = undefined
-                    const viewportParent = viewport.parentElement
-                    for (let i = 0; i < columns.length; i++) {
-                        if (undefined === index && viewportParent === columns[i]) {
-                            index = i
-                        }
+                const columns = browser.root.querySelectorAll('.igv-column')
+                let index = undefined
+                const viewportParent = viewport.parentElement
+                for (let i = 0; i < columns.length; i++) {
+                    if (undefined === index && viewportParent === columns[i]) {
+                        index = i
                     }
+                }
 
-                    if (!(undefined === index)) {
+                const rulerViewport = browser.getRulerTrackView().viewports[index]
+                const result = rulerViewport.mouseMove(event)
 
-                        const rulerViewport = browser.getRulerTrackView().viewports[index]
-                        const result = rulerViewport.mouseMove(event)
+                if (result) {
 
-                        if (result) {
+                    const {start, bp, end} = result
+                    const interpolant = (bp - start) / (end - start)
 
-                            const {start, bp, end} = result
-                            const interpolant = (bp - start) / (end - start)
-
-                            if (this.customMouseHandler) {
-                                this.customMouseHandler({start, bp, end, interpolant})
-                            }
-                        } // if (result)
-
-                    } // if (index)
-
-                } // if (viewport && browser.getRulerTrackView())
-
-            } // if ('CANVAS' === event.target.tagName) {
+                    if (this.customMouseHandler) {
+                        this.customMouseHandler({start, bp, end, interpolant})
+                    }
+                }
+            }
 
         }
     }

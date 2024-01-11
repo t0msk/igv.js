@@ -63,7 +63,7 @@ class BamSource {
                 if (StringUtils.isString(this.config.url)) {
                     const inferIndexPath = TrackUtils.inferIndexPath(this.config.url, "bai")
                     if (inferIndexPath) {
-                        console.error(`Warning: no indexURL specified for ${this.config.url}.  Guessing ${inferIndexPath}`)
+                        console.error(`Warning: no indexURL specified for ${this.config.url}.  Guessing ${this.baiPath}`)
                         this.config.indexURL = inferIndexPath
                     } else {
                         console.error(`Warning: no indexURL specified for ${this.config.url}.`)
@@ -110,7 +110,7 @@ class BamSource {
         this.alignmentContainer = alignmentContainer
 
         if (hasAlignments) {
-            const sequence = await genome.getSequence(chr, alignmentContainer.start, alignmentContainer.end)
+            const sequence = await genome.sequence.getSequence(chr, alignmentContainer.start, alignmentContainer.end)
             if (sequence) {
                 alignmentContainer.coverageMap.refSeq = sequence    // TODO -- fix this
                 alignmentContainer.sequence = sequence           // TODO -- fix this

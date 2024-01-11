@@ -2,10 +2,6 @@ import "./utils/mockObjects.js"
 import BamReader from "../js/bam/bamReader.js"
 import {assert} from 'chai'
 import BamReaderNonIndexed from "../js/bam/bamReaderNonIndexed.js"
-import {createGenome} from "./utils/Genome.js"
-
-
-const genome = createGenome()
 
 suite("testBAM", function () {
 
@@ -16,11 +12,10 @@ suite("testBAM", function () {
         const end = 155160000
 
         const bamReader = new BamReader({
-                type: 'bam',
-                url: 'test/data/bam/na12889.bam',
-                indexURL: 'test/data/bam/na12889.bam.csi'
-            },
-            genome)
+            type: 'bam',
+            url: 'test/data/bam/na12889.bam',
+            indexURL: 'test/data/bam/na12889.bam.csi'
+        })
 
         const alignmentContainer = await bamReader.readAlignments(chr, start, end)
         validate(assert, alignmentContainer)
@@ -28,20 +23,17 @@ suite("testBAM", function () {
 
     test("BAM alignments - non indexed", async function () {
 
+        const chr = 'chr1'
         const start = 155140000
         const end = 155160000
 
         const bamReader = new BamReaderNonIndexed({
-                type: 'bam',
-                url: 'test/data/bam/na12889.bam',
-                indexed: false
-            },
-            genome)
+            type: 'bam',
+            url: 'test/data/bam/na12889.bam',
+            indexed: false
+        })
 
-        let alignmentContainer = await bamReader.readAlignments("chr1", start, end)
-        validate(assert, alignmentContainer)
-
-        alignmentContainer = await bamReader.readAlignments("1", start, end)
+        const alignmentContainer = await bamReader.readAlignments(chr, start, end)
         validate(assert, alignmentContainer)
     })
 

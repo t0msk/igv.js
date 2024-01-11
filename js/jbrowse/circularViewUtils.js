@@ -149,17 +149,15 @@ const makeVCFChords = (features) => {
 function makeCircViewChromosomes(genome) {
     const regions = []
     const colors = []
-    if(genome.wgChromosomeNames) {
-        for (let chrName of genome.wgChromosomeNames) {
-            const chr = genome.getChromosome(chrName)
-            colors.push(getChrColor(chr.name))
-            regions.push(
-                {
-                    name: chr.name,
-                    bpLength: chr.bpLength
-                }
-            )
-        }
+    for (let chrName of genome.wgChromosomeNames) {
+        const chr = genome.getChromosome(chrName)
+        colors.push(getChrColor(chr.name))
+        regions.push(
+            {
+                name: chr.name,
+                bpLength: chr.bpLength
+            }
+        )
     }
     return regions
 }

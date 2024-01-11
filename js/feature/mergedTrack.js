@@ -26,6 +26,7 @@
 
 import TrackBase from "../trackBase.js"
 import paintAxis from "../util/paintAxis.js"
+import MenuUtils from "../ui/menuUtils.js"
 import {FeatureUtils} from "../../node_modules/igv-utils/src/index.js"
 
 
@@ -40,14 +41,13 @@ class MergedTrack extends TrackBase {
         this.featureType = 'numeric'
         this.paintAxis = paintAxis
         this.graphType = config.graphType
-
-        this._alpha = this.config.alpha || 0.5
     }
 
     init(config) {
         if (!config.tracks) {
             throw Error("Error: no tracks defined for merged track" + config)
         }
+
         super.init(config)
     }
 
@@ -86,17 +86,7 @@ class MergedTrack extends TrackBase {
 
         this.height = this.config.height || 50
 
-        this.resolutionAware = this.tracks.some(t => t.resolutionAware)
-
         return Promise.all(p)
-    }
-
-    set alpha(alpha) {
-        this._alpha = alpha
-    }
-
-    get alpha() {
-        return this._alpha
     }
 
     get height() {
@@ -114,18 +104,18 @@ class MergedTrack extends TrackBase {
     }
 
     menuItemList() {
-        const items = []
+        let items = []
         if (this.flipAxis !== undefined) {
             items.push({
                 label: "Flip y-axis",
-                click: function flipYAxisHandler(){
+                click: () => {
                     this.flipAxis = !this.flipAxis
                     this.trackView.repaintViews()
                 }
             })
         }
 
-        items.push(...this.numericDataMenuItems())
+        items = items.concat(MenuUtils.numericDataMenuItems(this.trackView))
 
         return items
     }
@@ -147,9 +137,6 @@ class MergedTrack extends TrackBase {
         for (let i = 0, len = this.tracks.length; i < len; i++) {
             const trackOptions = Object.assign({}, options)
             trackOptions.features = mergedFeatures.featureArrays[i]
-
-            trackOptions.alpha = this.alpha
-
             this.tracks[i].dataRange = this.dataRange
             this.tracks[i].flipAxis = this.flipAxis
             this.tracks[i].logScale = this.logScale
@@ -162,7 +149,7 @@ class MergedTrack extends TrackBase {
 
     popupData(clickState) {
 
-        if (clickState.viewport && clickState.viewport.cachedFeatures) {
+        if(clickState.viewport && clickState.viewport.cachedFeatures) {
 
             const featuresArray = clickState.viewport.cachedFeatures.featureArrays
 
@@ -188,23 +175,23 @@ class MergedTrack extends TrackBase {
         // feature is not already loaded this won't work,  but the user wouldn't be mousing over it either.
         const mergedFeaturesCollection = clickState.viewport.cachedFeatures
 
-        if (!mergedFeaturesCollection) {
-            return []
+        if(!mergedFeaturesCollection) {
+            return [];
         }
 
         const genomicLocation = clickState.genomicLocation
-        const clickedFeatures = []
-        for (let features of mergedFeaturesCollection.featureArrays) {
+        const clickedFeatures = [];
+        for(let features of mergedFeaturesCollection.featureArrays) {
             // When zoomed out we need some tolerance around genomicLocation
             const tolerance = (clickState.referenceFrame.bpPerPixel > 0.2) ? 3 * clickState.referenceFrame.bpPerPixel : 0.2
             const ss = genomicLocation - tolerance
             const ee = genomicLocation + tolerance
             const tmp = (FeatureUtils.findOverlapping(features, ss, ee))
-            for (let f of tmp) {
+            for(let f of tmp) {
                 clickedFeatures.push(f)
             }
         }
-        return clickedFeatures
+        return clickedFeatures;
     }
 
 

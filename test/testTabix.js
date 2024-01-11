@@ -65,7 +65,7 @@ suite("testTabix", function () {
         }
     })
 
-    test("CSI query - gff", async function () {
+    test("CSI query - gtf", async function () {
 
         this.timeout(200000)
 
@@ -86,7 +86,7 @@ suite("testTabix", function () {
         assert.ok(len > 0)
         for (let i = 1; i < len - 1; i++) {
             const f = features[i]
-            assert.equal(f.chr , chr)
+            assert.ok(f.chr === chr)
         }
     })
 })

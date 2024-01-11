@@ -12,8 +12,6 @@ import {ColorTable, PaletteColorTable} from "../util/colorPalletes.js"
 import {isSecureContext} from "../util/igvUtils.js"
 import {IGVColor} from "../../node_modules/igv-utils/src/index.js"
 
-const DEFAULT_COLOR = 'rgb(0, 0, 150)'
-
 
 class FeatureTrack extends TrackBase {
 
@@ -34,6 +32,7 @@ class FeatureTrack extends TrackBase {
 
     init(config) {
         super.init(config)
+
 
         // Obscure option, not common or supoorted, included for backward compatibility
         this.labelDisplayMode = config.labelDisplayMode
@@ -105,30 +104,6 @@ class FeatureTrack extends TrackBase {
 
     }
 
-    /**
-     * Return true if this track can be searched for genome location by feature property.
-     * This track is searchable if its featureSource is searchable.
-     * @returns {boolean}
-     */
-    get searchable() {
-        return this.featureSource.searchable
-    }
-
-    async search(locus) {
-        if(this.featureSource && this.featureSource.searchable) {
-            return this.featureSource.search(locus)
-        } else {
-            return undefined
-        }
-    }
-
-
-    /**
-     * Return boolean indicating if this track supports the whole genome view.  Generally this is non-indexed feature
-     * tracks.
-     *
-     * @returns {*|boolean}
-     */
     get supportsWholeGenome() {
         if (this.config.supportsWholeGenome !== undefined) {
             return this.config.supportsWholeGenome
@@ -197,7 +172,7 @@ class FeatureTrack extends TrackBase {
             for (let feature of featureList) {
                 if (feature.start > bpStart && feature.end < bpEnd) {
                     const row = this.displayMode === "COLLAPSED" ? 0 : feature.row || 0
-                    if (!rowFeatureCount[row]) {
+                    if (rowFeatureCount[row] === undefined) {
                         rowFeatureCount[row] = 1
                     } else {
                         rowFeatureCount[row]++
@@ -206,7 +181,7 @@ class FeatureTrack extends TrackBase {
                     options.rowLastLabelX[row] = -Number.MAX_SAFE_INTEGER
                 }
             }
-            const maxFeatureCount = Math.max(1, Math.max(...(rowFeatureCount.filter(c => !isNaN(c)))))
+            const maxFeatureCount = Math.max(1, Math.max(...rowFeatureCount))
             const pixelsPerFeature = pixelWidth / maxFeatureCount
 
             let lastPxEnd = []
@@ -333,40 +308,36 @@ class FeatureTrack extends TrackBase {
 
         if (this.render === renderSnp) {
             menuItems.push('<hr/>')
-
-            for (const colorScheme of ["function", "class"]) {
-
-                const object = $(createCheckbox(`Color by ${ colorScheme }`, colorScheme === this.colorBy))
-
-                function colorSchemeHandler() {
-                    this.colorBy = colorScheme
-                    this.trackView.repaintViews()
-                }
-                menuItems.push({ object, click:colorSchemeHandler })
+            for (let colorScheme of ["function", "class"]) {
+                menuItems.push({
+                    object: $(createCheckbox('Color by ' + colorScheme, colorScheme === this.colorBy)),
+                    click: () => {
+                        this.colorBy = colorScheme
+                        this.trackView.repaintViews()
+                    }
+                })
             }
         }
 
         menuItems.push('<hr/>')
+        for (let displayMode of ["COLLAPSED", "SQUISHED", "EXPANDED"]) {
+            const lut =
+                {
+                    "COLLAPSED": "Collapse",
+                    "SQUISHED": "Squish",
+                    "EXPANDED": "Expand"
+                }
 
-        const lut =
-            {
-                "COLLAPSED": "Collapse",
-                "SQUISHED": "Squish",
-                "EXPANDED": "Expand"
-            };
-
-        for (const displayMode of ["COLLAPSED", "SQUISHED", "EXPANDED"]) {
-
-            const object = $(createCheckbox(lut[displayMode], displayMode === this.displayMode))
-
-            function displayModeHandler() {
-                this.displayMode = displayMode
-                this.config.displayMode = displayMode
-                this.trackView.checkContentHeight()
-                this.trackView.repaintViews()
-            }
-
-            menuItems.push({ object, click:displayModeHandler })
+            menuItems.push(
+                {
+                    object: $(createCheckbox(lut[displayMode], displayMode === this.displayMode)),
+                    click: () => {
+                        this.displayMode = displayMode
+                        this.config.displayMode = displayMode
+                        this.trackView.checkContentHeight()
+                        this.trackView.repaintViews()
+                    }
+                })
         }
 
         return menuItems
@@ -459,9 +430,7 @@ class FeatureTrack extends TrackBase {
      * @returns {string}
      */
 
-    getColorForFeature(f) {
-
-        const feature = f._f || f    // f might be a "whole genome" wrapper
+    getColorForFeature(feature) {
 
         let color
         if (this.altColor && "-" === feature.strand) {
@@ -475,11 +444,8 @@ class FeatureTrack extends TrackBase {
             color = this.colorTable.getColor(value)
         } else if (feature.color) {
             color = feature.color   // Explicit color for feature
-        }
-
-        // If no explicit setting use the default
-        if (!color) {
-            color = DEFAULT_COLOR   // Track default
+        } else {
+            color = this.color   // Track default
         }
 
         if (feature.alpha && feature.alpha !== 1) {

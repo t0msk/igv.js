@@ -18,8 +18,7 @@ suite("testGFF", function () {
         const featureReader = new FeatureFileReader({
                 url: 'test/data/gff/eden.gff',
                 format: 'gff3',
-                filterTypes: [],
-                assembleGFF: false
+                filterTypes: []
             },
             genome
         )
@@ -59,8 +58,7 @@ CDS	    7000	7600	.	+	1	ID=cds00003;Parent=mRNA00003;Name=edenprotein.3
         const featureReader = new FeatureFileReader({
                 url: 'test/data/gff/Ensembl_MYC-205.gff3',
                 format: 'gff3',
-                filterTypes: [],
-                assembleGFF: false
+                filterTypes: []
             },
             genome
         )
@@ -83,8 +81,7 @@ CDS	    7000	7600	.	+	1	ID=cds00003;Parent=mRNA00003;Name=edenprotein.3
         const featureReader = new FeatureFileReader({
                 url: 'test/data/gff/Ensembl_MYC-region.gff3',
                 format: 'gff3',
-                filterTypes: [],
-                assembleGFF: false
+                filterTypes: []
             },
             genome
         )
@@ -111,8 +108,7 @@ CDS	    7000	7600	.	+	1	ID=cds00003;Parent=mRNA00003;Name=edenprotein.3
         const featureReader = new FeatureFileReader({
                 url: 'test/data/gff/NCBI_hg38_MYC.gtf',
                 format: 'gtf',
-                filterTypes: [],
-                assembleGFF: false
+                filterTypes: []
             },
             genome
         )
@@ -145,8 +141,7 @@ CDS	    7000	7600	.	+	1	ID=cds00003;Parent=mRNA00003;Name=edenprotein.3
         const featureReader = new FeatureFileReader({
                 url: 'test/data/gff/gencode-lincRNA.gtf',
                 format: 'gtf',
-                filterTypes: [],
-                assembleGFF: false
+                filterTypes: []
             },
             genome
         )
@@ -170,8 +165,7 @@ CDS	    7000	7600	.	+	1	ID=cds00003;Parent=mRNA00003;Name=edenprotein.3
         const featureReader = new FeatureFileReader({
                 url: 'test/data/gff/Ensembl-transcript.gtf',
                 format: 'gtf',
-                filterTypes: [],
-                assembleGFF: false
+                filterTypes: []
             },
             genome
         )
@@ -212,8 +206,7 @@ CDS	    7000	7600	.	+	1	ID=cds00003;Parent=mRNA00003;Name=edenprotein.3
         const featureReader = new FeatureFileReader({
                 url: 'test/data/gff/wustl.gtf',
                 format: 'gtf',
-                filterTypes: [],
-                assembleGFF: false
+                filterTypes: []
             },
             genome
         )

@@ -35,7 +35,7 @@ import {FileUtils, StringUtils} from "../../node_modules/igv-utils/src/index.js"
 
 const isString = StringUtils.isString
 
-const DEFAULT_COLOR = "rgb(0,0,150)"
+
 const DEFAULT_VISIBILITY_WINDOW = 1000000
 const TOP_MARGIN = 10
 const STANDARD_FIELDS = new Map([["REF", "referenceBases"], ["ALT", "alternateBases"], ["QUAL", "quality"], ["FILTER", "filter"]])
@@ -85,7 +85,6 @@ class VariantTrack extends TrackBase {
             this.colorTables = new Map()
             this.colorTables.set(config.colorBy, new ColorTable(config.colorTable))
         }
-        this._color = config.color
         this._strokecolor = config.strokecolor
         this._context_hook = config.context_hook
 
@@ -118,7 +117,7 @@ class VariantTrack extends TrackBase {
     }
 
     get color() {
-        return this._color || DEFAULT_COLOR
+        return this._color
     }
 
     set color(c) {
@@ -564,8 +563,9 @@ class VariantTrack extends TrackBase {
             menuItems.push({object: $('<div class="igv-track-menu-border-top">')})
             menuItems.push({
                 object: $(createCheckbox("Show Genotypes", this.showGenotypes)),
-                click: function showGenotypesHandler() {
+                click: () => {
                     this.showGenotypes = !this.showGenotypes
+                    //adjustTrackHeight();
                     this.trackView.checkContentHeight()
                     this.trackView.repaintViews()
                 }
@@ -584,7 +584,7 @@ class VariantTrack extends TrackBase {
             menuItems.push(
                 {
                     object: $(createCheckbox(lut[displayMode], displayMode === this.displayMode)),
-                    click: function displayModeHandler() {
+                    click: () => {
                         this.displayMode = displayMode
                         this.trackView.checkContentHeight()
                         this.trackView.repaintViews()
@@ -598,7 +598,7 @@ class VariantTrack extends TrackBase {
             menuItems.push('<hr>')
             menuItems.push({
                 label: 'Add SVs to circular view',
-                click: function circularViewHandler() {
+                click: () => {
                     const inView = []
                     for (let viewport of this.trackView.viewports) {
                         this.sendChordsForViewport(viewport)
@@ -656,7 +656,7 @@ class VariantTrack extends TrackBase {
     colorByCB(menuItem, showCheck) {
 
         const $e = $(createCheckbox(menuItem.label, showCheck))
-        function clickHandler() {
+        const clickHandler = () => {
 
             if (menuItem.key === this.colorBy) {
                 this.colorBy = undefined

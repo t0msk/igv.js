@@ -76,7 +76,7 @@ class GCNVTrack extends TrackBase {
     }
 
     menuItemList() {
-        return this.numericDataMenuItems()
+        return MenuUtils.numericDataMenuItems(this.trackView)
     }
 
     async getFeatures(chr, start, end) {

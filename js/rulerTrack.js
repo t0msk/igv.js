@@ -25,7 +25,7 @@
 
 import IGVGraphics from "./igv-canvas.js"
 import {IGVColor, StringUtils} from "../node_modules/igv-utils/src/index.js"
-import GenomeUtils from "./genome/genomeUtils.js"
+import GenomeUtils from "./genome/genome.js"
 
 const numberFormatter = StringUtils.numberFormatter
 
@@ -144,7 +144,6 @@ class RulerTrack {
 
         IGVGraphics.strokeLine(ctx, x + w, y, x + w, y + h, {strokeStyle: IGVColor.greyScale(191)})
 
-        name = this.browser.genome.getChromosomeDisplayName(name)
         const shortName = (name.startsWith("chr")) ? name.substring(3) : name
 
         if (w > ctx.measureText(shortName).width) {

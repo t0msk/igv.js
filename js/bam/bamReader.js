@@ -1,3 +1,29 @@
+/*
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2016-2017 The Regents of the University of California
+ * Author: Jim Robinson
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
+
 import {loadIndex} from "./indexFactory.js"
 import AlignmentContainer from "./alignmentContainer.js"
 import BamUtils from "./bamUtils.js"
@@ -13,8 +39,6 @@ import BGZBlockLoader from "./bgzBlockLoader.js"
  */
 class BamReader {
 
-    chrAliasTable = new Map()
-
     constructor(config, genome) {
         this.config = config
         this.genome = genome
@@ -27,7 +51,9 @@ class BamReader {
 
     async readAlignments(chr, bpStart, bpEnd) {
 
-        const chrId = await this.#getChrIdx(chr)
+        const chrToIndex = await this.getChrIndex()
+        const queryChr = this.chrAliasTable.hasOwnProperty(chr) ? this.chrAliasTable[chr] : chr
+        const chrId = chrToIndex[queryChr]
         const alignmentContainer = new AlignmentContainer(chr, bpStart, bpEnd, this.config)
 
         if (chrId === undefined) {
@@ -44,7 +70,7 @@ class BamReader {
 
             for (let c of chunks) {
                 const ba = await this._blockLoader.getData(c.minv, c.maxv)
-                const done = BamUtils.decodeBamRecords(ba, c.minv.offset, alignmentContainer, this.header.chrNames, chrId, bpStart, bpEnd, this.filter)
+                const done = BamUtils.decodeBamRecords(ba, c.minv.offset, alignmentContainer, this.indexToChr, chrId, bpStart, bpEnd, this.filter)
                 if (done) {
                     break
                 }
@@ -54,42 +80,6 @@ class BamReader {
         }
     }
 
-    async #getChrIdx(chr) {
-
-        await this.getHeader()
-
-        if (this.chrAliasTable.has(chr)) {
-            chr = this.chrAliasTable.get(chr)
-            if (chr === undefined) {
-                return undefined
-            }
-        }
-
-        let chrIdx = this.header.chrToIndex[chr]
-
-        // Try alias
-        if (chrIdx === undefined) {
-            const aliasRecord = await this.genome.getAliasRecord(chr)
-            let alias
-            if (aliasRecord) {
-                const aliases = Object.keys(aliasRecord)
-                    .filter(k => k !== "start" && k !== "end")
-                    .map(k => aliasRecord[k])
-                    .filter(a => this.header.chrToIndex[a])
-                if (aliases.length > 0) {
-                    alias = aliases[0]
-                    chrIdx = this.header.chrToIndex[aliases[0]]
-                }
-            }
-            this.chrAliasTable.set(chr, alias)  // alias may be undefined => no alias exists. Setting prevents repeated attempts
-        }
-        return chrIdx
-    }
-
-    /**
-     *
-     * @returns {Promise<{magicNumer: number, size: number, chrNames: Array, chrToIndex: ({}|*), chrAliasTable: ({}|*)}>}
-     */
     async getHeader() {
         if (!this.header) {
             const genome = this.genome
@@ -112,8 +102,9 @@ class BamReader {
     }
 
     async getIndex() {
+        const genome = this.genome
         if (!this.index) {
-            this.index = await loadIndex(this.baiPath, this.config, this.genome)
+            this.index = await loadIndex(this.baiPath, this.config, genome)
         }
         return this.index
     }
@@ -125,7 +116,7 @@ class BamReader {
             const header = await this.getHeader()
             this.chrToIndex = header.chrToIndex
             this.indexToChr = header.chrNames
-            this.chrNames = new Set(header.chrNames)
+            this.chrAliasTable = header.chrAliasTable
             return this.chrToIndex
 
         }

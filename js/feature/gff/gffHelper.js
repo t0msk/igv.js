@@ -135,6 +135,11 @@ class GFFHelper {
         features = features.filter(f => filterTypes === undefined || !filterTypes.has(f.type))
 
         for (let f of features) {
+
+            if (f.type === "biological_region") {
+                console.log()
+            }
+
             if (isTranscript(f.type)) {
                 const transcriptId = f.id // getAttribute(f.attributeString, "transcript_id", /\s+/);
                 if (undefined !== transcriptId) {

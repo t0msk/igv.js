@@ -211,12 +211,15 @@ class RnaStructTrack extends TrackBase {
     }
 
     menuItemList() {
+
+        var self = this
+
         return [
             {
                 name: "Toggle arc direction",
-                click: function toggleArcDirectionHandler() {
-                    this.arcOrientation = !this.arcOrientation
-                    this.trackView.repaintViews()
+                click: function () {
+                    self.arcOrientation = !self.arcOrientation
+                    self.trackView.repaintViews()
                 }
             }
         ]

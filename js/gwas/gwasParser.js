@@ -1,5 +1,3 @@
-const MIN_EXPONENT = Math.log10(Number.MIN_VALUE)
-
 /**
  * Parser for IGV desktop GWAS files.  See http://software.broadinstitute.org/software/igv/GWAS
  */
@@ -67,34 +65,22 @@ class GWASParser {
         if (!this.columns) {
             this.parseHeaderLine(headerLine)
         }
-
         let line
-
-        const parseValue = (valueString) => {
-            // Don't try to parse extremely small values
-            const idx = valueString.indexOf("E");
-            if(idx > 0) {
-                const exp = Number.parseInt(valueString.substring(idx + 1));
-                if (exp < MIN_EXPONENT) {
-                   return Number.MIN_VALUE;
-                }
-            }
-            return Number(valueString)
-        }
-
         while ((line = dataWrapper.nextLine()) !== undefined) {
             const tokens = line.split(/\t/)
             if (tokens.length === this.columns.length) {
-                const posString = tokens[this.posCol]
-                if(posString.indexOf(";") > 0 || posString.length == 0 || posString.indexOf('x') > 0) {
-                    continue
-                }
                 const chr = tokens[this.chrCol]
-                const value = parseValue(tokens[this.valueCol])
-                const start = parseInt(posString) - 1
+                const start = parseInt(tokens[this.posCol]) - 1
                 const end = start + 1
-                allFeatures.push(new GWASFeature({chr, start, end, value, line, columns: this.columns}))
-
+                const value = Number(tokens[this.valueCol])
+                allFeatures.push(new GWASFeature({
+                    chr: chr,
+                    start: start,
+                    end: end,
+                    value: value,
+                    line: line,
+                    columns: this.columns
+                }))
             }
         }
         return allFeatures

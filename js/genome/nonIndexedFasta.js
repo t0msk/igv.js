@@ -1,4 +1,29 @@
+/*
+ * The MIT License (MIT)
+ *
+ * Copyright (c) 2014 Broad Institute
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
 
+// Indexed fasta files
 import {BGZip, igvxhr, StringUtils} from "../../node_modules/igv-utils/src/index.js"
 import Chromosome from "./chromosome.js"
 import {buildOptions, isDataURL} from "../util/igvUtils.js"
@@ -9,15 +34,14 @@ const reservedProperties = new Set(['fastaURL', 'indexURL', 'cytobandURL', 'inde
 
 class NonIndexedFasta {
 
-    #chromosomeNames
-    chromosomes = new Map()
-    sequences = new Map()
 
     constructor(reference) {
 
         this.fastaURL = reference.fastaURL
         this.withCredentials = reference.withCredentials
-
+        this.chromosomeNames = []
+        this.chromosomes = {}
+        this.sequences = new Map()
 
         // Build a track-like config object from the referenceObject
         const config = {}
@@ -34,27 +58,7 @@ class NonIndexedFasta {
         return this.loadAll()
     }
 
-    getSequenceRecord(chr) {
-        return this.chromosomes.get(chr)
-    }
-
-    get chromosomeNames() {
-        if(!this.#chromosomeNames) {
-            this.#chromosomeNames = Array.from(this.chromosomes.keys())
-        }
-        return this.#chromosomeNames
-    }
-
-    getFirstChromosomeName() {
-        return this.chromosomeNames[0]
-    }
-
     async getSequence(chr, start, end) {
-
-        if(this.sequences.size === 0) {
-            await this.loadAll()
-
-        }
 
         if (!this.sequences.has(chr)) {
             return undefined
@@ -160,11 +164,12 @@ class NonIndexedFasta {
         function pushChromosome(current, order) {
             const length = current.length || (current.offset + current.seq.length)
             if (!chrNameSet.has(current.chr)) {
+                this.chromosomeNames.push(current.chr)
                 this.sequences.set(current.chr, [])
-                this.chromosomes.set(current.chr, new Chromosome(current.chr, order, length))
+                this.chromosomes[current.chr] = new Chromosome(current.chr, order, length)
                 chrNameSet.add(current.chr)
             } else {
-                const c = this.chromosomes.get(current.chr)
+                const c = this.chromosomes[current.chr]
                 c.bpLength = Math.max(c.bpLength, length)
             }
             this.sequences.get(current.chr).push(new SequenceSlice(current.offset, current.seq))

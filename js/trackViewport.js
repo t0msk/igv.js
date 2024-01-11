@@ -8,7 +8,7 @@ import Viewport from "./viewport.js"
 import {FileUtils} from "../node_modules/igv-utils/src/index.js"
 import {DOMUtils} from "../node_modules/igv-ui/dist/igv-ui.js"
 import C2S from "./canvas2svg.js"
-import GenomeUtils from "./genome/genomeUtils.js"
+import GenomeUtils from "./genome/genome.js"
 import {bppFeatureFetchThreshold} from "./sequenceTrack.js"
 
 const NOT_LOADED_MESSAGE = 'Error loading track data'
@@ -17,9 +17,6 @@ let mouseDownCoords
 let lastClickTime = 0
 let lastHoverUpdateTime = 0
 let popupTimerID
-let trackViewportPopoverList = []
-
-let popover
 
 class TrackViewport extends Viewport {
 
@@ -42,14 +39,13 @@ class TrackViewport extends Viewport {
             this.$trackLabel = $('<div class="igv-track-label">')
             this.$viewport.append(this.$trackLabel)
             this.setTrackLabel(track.name)
-            if (false === this.browser.doShowTrackLabels) {
+            if (false === this.browser.trackLabelsVisible) {
                 this.$trackLabel.hide()
             }
         }
 
         this.stopSpinner()
         this.addMouseHandlers()
-
     }
 
     setContentHeight(contentHeight) {
@@ -182,8 +178,7 @@ class TrackViewport extends Viewport {
         const chr = referenceFrame.chr
 
         // Expand the requested range so we can pan a bit without reloading.  But not beyond chromosome bounds
-        const chromosome = this.browser.genome.getChromosome(chr)
-        const chrLength = chromosome ? chromosome.bpLength : Number.MAX_SAFE_INTEGER
+        const chrLength = this.browser.genome.getChromosome(chr).bpLength
         const pixelWidth = this.$viewport.width()// * 3;
         const bpWidth = pixelWidth * referenceFrame.bpPerPixel
         const bpStart = Math.floor(Math.max(0, referenceFrame.start - bpWidth))
@@ -207,9 +202,8 @@ class TrackViewport extends Viewport {
                     }
                 }
 
-                const mr = track && (track.resolutionAware)   //
-                const windowFunction = this.windowFunction
-                this.featureCache = new FeatureCache(chr, bpStart, bpEnd, referenceFrame.bpPerPixel, features, roiFeatures, mr, windowFunction)
+                const mr = track && ("wig" === track.type || "merged" === track.type)   // wig tracks are potentially multiresolution (e.g. bigwig)
+                this.featureCache = new FeatureCache(chr, bpStart, bpEnd, referenceFrame.bpPerPixel, features, roiFeatures, mr)
                 this.loading = false
                 this.hideMessage()
                 this.stopSpinner()
@@ -226,14 +220,6 @@ class TrackViewport extends Viewport {
             this.loading = false
             this.stopSpinner()
         }
-    }
-
-    get track() {
-        return this.trackView.track
-    }
-
-    get windowFunction() {
-        return this.track ? this.track.windowFunction : undefined
     }
 
     /**
@@ -311,7 +297,6 @@ class TrackViewport extends Viewport {
                 bpStart,
                 bpEnd: bpEnd,
                 bpPerPixel,
-                windowFunction: this.windowFunction,
                 referenceFrame: this.referenceFrame,
                 selection: this.selection,
                 viewport: this,
@@ -476,7 +461,7 @@ class TrackViewport extends Viewport {
             return
         }
 
-        if (this.$trackLabel && true === this.browser.doShowTrackLabels) {
+        if (this.$trackLabel && true === this.browser.trackLabelsVisible) {
             const {x, y, width, height} = DOMUtils.relativeDOMBBox(this.$viewport.get(0), this.$trackLabel.get(0))
             this.renderTrackLabelSVG(context, deltaX + x, deltaY + y, width, height)
         }
@@ -550,7 +535,7 @@ class TrackViewport extends Viewport {
     }
 
     async getFeatures(track, chr, start, end, bpPerPixel) {
-        if (this.featureCache && this.featureCache.containsRange(chr, start, end, bpPerPixel, this.windowFunction)) {
+        if (this.featureCache && this.featureCache.containsRange(chr, start, end, bpPerPixel)) {
             return this.featureCache.features
         } else if (typeof track.getFeatures === "function") {
             const features = await track.getFeatures(chr, start, end, bpPerPixel, this)
@@ -570,15 +555,14 @@ class TrackViewport extends Viewport {
             this.referenceFrame.start < data.bpStart ||
             this.referenceFrame.end > data.bpEnd ||
             this.referenceFrame.chr !== data.referenceFrame.chr ||
-            this.referenceFrame.bpPerPixel != data.bpPerPixel ||
-            this.windowFunction != data.windowFunction
+            this.referenceFrame.bpPerPixel != data.bpPerPixel
     }
 
     needsReload() {
         if (!this.featureCache) return true
         const {chr, bpPerPixel} = this.referenceFrame
         const {bpStart, bpEnd} = this.repaintDimensions()
-        return (!this.featureCache.containsRange(chr, bpStart, bpEnd, bpPerPixel, this.windowFunction))
+        return (!this.featureCache.containsRange(chr, bpStart, bpEnd, bpPerPixel))
     }
 
     createZoomInNotice($parent) {
@@ -706,12 +690,16 @@ class TrackViewport extends Viewport {
                     return
                 }
 
+                // Close any currently open popups
+                $('.igv-popover').hide()
+
+
                 if (this.browser.dragObject || this.browser.isScrolling) {
                     return
                 }
 
-                // Treat as a mouse click, it's either a single or double click.
-                // Handle here and stop propagation / default
+                // Treat as a mouse click, its either a single or double click.
+                // Handle here and stop propogation / default
                 event.preventDefault()
 
                 const mouseX = DOMUtils.translateMouseCoordinates(event, this.$viewport.get(0)).x
@@ -756,50 +744,19 @@ class TrackViewport extends Viewport {
                 } else {
                     // single-click
 
-                    /*if (event.shiftKey && typeof this.trackView.track.shiftClick === "function") {
+                    if (event.shiftKey && typeof this.trackView.track.shiftClick === "function") {
 
                         this.trackView.track.shiftClick(xBP, event)
 
-                    } else */
-
-                    if (typeof this.trackView.track.popupData === "function") {
+                    } else if (typeof this.trackView.track.popupData === "function") {
 
                         popupTimerID = setTimeout(() => {
 
                                 const content = this.getPopupContent(event)
                                 if (content) {
-
-                                    if (false === event.shiftKey) {
-
-                                        if (popover) {
-                                            popover.dispose()
-                                        }
-
-                                        if (trackViewportPopoverList.length > 0) {
-                                            for (const gp of trackViewportPopoverList) {
-                                                gp.dispose()
-                                            }
-                                            trackViewportPopoverList.length = 0
-                                        }
-
-                                        popover = new Popover(this.$viewport.get(0).parentElement, true, undefined, () => {
-                                            popover.dispose()
-                                        })
-
-                                        popover.presentContentWithEvent(event, content)
-                                    } else {
-
-                                        let po = new Popover(this.$viewport.get(0).parentElement, true, undefined, () => {
-                                            const index = trackViewportPopoverList.indexOf(po)
-                                            trackViewportPopoverList.splice(index, 1)
-                                            po.dispose()
-                                        })
-
-                                        trackViewportPopoverList.push( po )
-
-                                        po.presentContentWithEvent(event, content)
-                                    }
-
+                                    if (this.popover) this.popover.dispose()
+                                    this.popover = new Popover(this.browser.columnContainer)
+                                    this.popover.presentContentWithEvent(event, content)
                                 }
                                 window.clearTimeout(popupTimerID)
                                 popupTimerID = undefined
@@ -830,9 +787,10 @@ class TrackViewport extends Viewport {
             }
 
             if (str) {
-                if (undefined === this.popover) {
-                    this.popover = new Popover(this.browser.columnContainer, true, (track.name || ''), undefined)
+                if (this.popover) {
+                    this.popover.dispose()
                 }
+                this.popover = new Popover(this.browser.columnContainer, (track.name || ''))
                 this.popover.presentContentWithEvent(event, str)
             }
         })
@@ -886,22 +844,6 @@ class TrackViewport extends Viewport {
         return content
     }
 
-    dispose() {
-
-        if (this.popover) {
-            this.popover.dispose()
-        }
-
-        // if (trackViewportPopoverList) {
-        //     for (let i = 0; i < trackViewportPopoverList.length; i++ ) {
-        //         trackViewportPopoverList[ i ].dispose()
-        //     }
-        //
-        //     trackViewportPopoverList = undefined
-        // }
-
-        super.dispose()
-    }
 
 }
 
@@ -928,7 +870,7 @@ function formatPopoverText(nameValues) {
 
 class FeatureCache {
 
-    constructor(chr, tileStart, tileEnd, bpPerPixel, features, roiFeatures, multiresolution, windowFunction) {
+    constructor(chr, tileStart, tileEnd, bpPerPixel, features, roiFeatures, multiresolution) {
         this.chr = chr
         this.bpStart = tileStart
         this.bpEnd = tileEnd
@@ -936,12 +878,9 @@ class FeatureCache {
         this.features = features
         this.roiFeatures = roiFeatures
         this.multiresolution = multiresolution
-        this.windowFunction = windowFunction
     }
 
-    containsRange(chr, start, end, bpPerPixel, windowFunction) {
-
-        if(windowFunction && windowFunction !== this.windowFunction) return false
+    containsRange(chr, start, end, bpPerPixel) {
 
         // For multi-resolution tracks allow for a 2X change in bpPerPixel
         const r = this.multiresolution ? this.bpPerPixel / bpPerPixel : 1
@@ -967,5 +906,4 @@ function mergeArrays(a, b) {
 
 }
 
-export { trackViewportPopoverList }
 export default TrackViewport

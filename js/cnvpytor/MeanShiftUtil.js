@@ -2,8 +2,6 @@
 import g_utils from './GeneralUtil.js'
 import t_dist from './t_dist.js'
 
-// TODO -- remove this hardcoded value
-const genome_size = 2871000000;
 
 function erf(x) {
     var m = 1.0, s = 1.0, sum = x * 1.0;
@@ -124,8 +122,7 @@ export class Partition {
         return new_array
     }
 
-    meanShiftCaller(bins_size, repeats = 3) {
-
+    meanShiftCaller(repeats = 3) {
         var ChrLevels = {}
         
         Object.entries(this.rd).forEach(([chr, chr_rd]) => {
@@ -277,6 +274,7 @@ export class Partition {
     call_mean_shift(repeats = 3) {
         const bin_size = 1000;
         // const genome_size = bin_size * this.rd.length;
+        const genome_size = 2871000000;
         var masked = new Array(this.rd.length).fill(false);
 
         // set the level
@@ -470,8 +468,8 @@ export class Partition {
     }
 
     cnv_calling(bin_size = 100000) {
-
-        var delta = 0.25 * this.mean
+        var delta = 0.25
+        var delta = delta * this.mean
 
         var min = this.mean - delta, max = this.mean + delta;
         // console.log('min: ', min, ', Max: ', max)
@@ -479,7 +477,7 @@ export class Partition {
         // console.log('delta', delta)
         var normal_genome_size = 2971000000
 
-        var levels = this.meanShiftCaller(bin_size)
+        var levels = this.meanShiftCaller()
 
         
         var merged_level = {}

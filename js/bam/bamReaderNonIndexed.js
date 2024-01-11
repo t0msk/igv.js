@@ -37,8 +37,6 @@ import {buildOptions, isDataURL} from "../util/igvUtils.js"
  */
 class BamReaderNonIndexed {
 
-    chrAliasTable = new Map()
-
     constructor(config, genome) {
         this.config = config
         this.genome = genome
@@ -47,75 +45,52 @@ class BamReaderNonIndexed {
         BamUtils.setReaderDefaults(this, config)
     }
 
-    /**
-     *
-     * @param chr
-     * @param bpStart
-     * @param bpEnd
-     * @returns {Promise<AlignmentContainer>}
-     */
+    // Return an alignment container
     async readAlignments(chr, bpStart, bpEnd) {
 
-        if (!this.alignmentCache) {
-            // For a non-indexed BAM file all alignments are read at once and cached.
-            let unc
+        if (this.alignmentCache) {
+            const header = this.header
+            const queryChr = header.chrAliasTable.hasOwnProperty(chr) ? header.chrAliasTable[chr] : chr
+            const qAlignments = this.alignmentCache.queryFeatures(queryChr, bpStart, bpEnd)
+            const alignmentContainer = new AlignmentContainer(chr, bpStart, bpEnd, this.config)
+            for (let a of qAlignments) {
+                alignmentContainer.push(a)
+            }
+            alignmentContainer.finish()
+            return alignmentContainer
+
+        } else {
             if (this.isDataUri) {
                 const data = decodeDataURI(this.bamPath)
-                unc = BGZip.unbgzf(data.buffer)
+                const unc = BGZip.unbgzf(data.buffer)
+                this.parseAlignments(unc)
+                return this.fetchAlignments(chr, bpStart, bpEnd)
             } else {
                 const arrayBuffer = await igvxhr.loadArrayBuffer(this.bamPath, buildOptions(this.config))
-                unc = BGZip.unbgzf(arrayBuffer)
+                const unc = BGZip.unbgzf(arrayBuffer)
+                this.parseAlignments(unc)
+                return this.fetchAlignments(chr, bpStart, bpEnd)
             }
-            this.alignmentCache = this.#parseAlignments(unc)
         }
 
-        const queryChr = await this.#getQueryChr(chr)
-        const qAlignments = this.alignmentCache.queryFeatures(queryChr, bpStart, bpEnd)
-        const alignmentContainer = new AlignmentContainer(chr, bpStart, bpEnd, this.config)
-        for (let a of qAlignments) {
-            alignmentContainer.push(a)
-        }
-        alignmentContainer.finish()
-        return alignmentContainer
     }
 
-    #parseAlignments(data) {
+    parseAlignments(data) {
         const alignments = []
         this.header = BamUtils.decodeBamHeader(data)
         BamUtils.decodeBamRecords(data, this.header.size, alignments, this.header.chrNames)
-        return new FeatureCache(alignments, this.genome)
+        this.alignmentCache = new FeatureCache(alignments, this.genome)
     }
 
-    async #getQueryChr(chr) {
-
-        const ownNames = new Set(this.header.chrNames)
-        if (ownNames.has(chr)) {
-            return chr
+    fetchAlignments(chr, bpStart, bpEnd) {
+        const queryChr = this.header.chrAliasTable.hasOwnProperty(chr) ? this.header.chrAliasTable[chr] : chr
+        const features = this.alignmentCache.queryFeatures(queryChr, bpStart, bpEnd)
+        const alignmentContainer = new AlignmentContainer(chr, bpStart, bpEnd, this.config)
+        for (let feature of features) {
+            alignmentContainer.push(feature)
         }
-
-        if (this.chrAliasTable.has(chr)) {
-            return this.chrAliasTable.get(chr)
-        }
-
-        // Try alias
-
-        if (this.genome) {
-            const aliasRecord = await this.genome.getAliasRecord(chr)
-            let alias
-            if (aliasRecord) {
-                const aliases = Object.keys(aliasRecord)
-                    .filter(k => k !== "start" && k !== "end")
-                    .map(k => aliasRecord[k])
-                    .filter(a => ownNames.has(a))
-                if (aliases.length > 0) {
-                    alias = aliases[0]
-                }
-            }
-            this.chrAliasTable.set(chr, alias)  // alias may be undefined => no alias exists. Setting prevents repeated attempts
-            return alias
-        }
-
-        return chr
+        alignmentContainer.finish()
+        return alignmentContainer
     }
 
 }

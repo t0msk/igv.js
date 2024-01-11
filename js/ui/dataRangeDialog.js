@@ -4,7 +4,7 @@ import {makeDraggable, UIUtils} from "../../node_modules/igv-ui/dist/igv-ui.js"
 
 class DataRangeDialog {
 
-    constructor(browser, $parent) {
+    constructor(browser, $parent, alert) {
 
         this.browser = browser
 
@@ -70,23 +70,11 @@ class DataRangeDialog {
         this.$container.hide()
     }
 
-    configure(trackViewOfTrackViewList) {
+    configure(trackView) {
 
+        const dataRange = trackView.dataRange()
         let min
         let max
-        let dataRange
-        if (Array.isArray(trackViewOfTrackViewList)) {
-            dataRange = { min: Number.MAX_SAFE_INTEGER, max:-Number.MAX_SAFE_INTEGER }
-            for (const trackView of trackViewOfTrackViewList) {
-                if (trackView.dataRange()) {
-                    dataRange.min = Math.min(trackView.dataRange().min, dataRange.min)
-                    dataRange.max = Math.max(trackView.dataRange().max, dataRange.max)
-                }
-            }
-        } else {
-            dataRange = trackViewOfTrackViewList.dataRange()
-        }
-
         if (dataRange) {
             min = dataRange.min
             max = dataRange.max
@@ -101,36 +89,32 @@ class DataRangeDialog {
         this.$minimum_input.unbind()
         this.$minimum_input.on('keyup', (e) => {
             if (13 === e.keyCode) {
-                this.processResults(trackViewOfTrackViewList)
+                this.processResults(trackView)
             }
         })
 
         this.$maximum_input.unbind()
         this.$maximum_input.on('keyup', (e) => {
             if (13 === e.keyCode) {
-                this.processResults(trackViewOfTrackViewList)
+                this.processResults(trackView)
             }
         })
 
         this.$ok.unbind()
         this.$ok.on('click', (e) => {
-            this.processResults(trackViewOfTrackViewList)
+            this.processResults(trackView)
         })
     }
 
-    processResults(trackViewOfTrackViewList) {
+
+    processResults(trackView) {
 
         const min = Number(this.$minimum_input.val())
         const max = Number(this.$maximum_input.val())
         if (isNaN(min) || isNaN(max)) {
             this.browser.alert.present(new Error('Must input numeric values'), undefined)
         } else {
-            const list = Array.isArray(trackViewOfTrackViewList) ? trackViewOfTrackViewList : [ trackViewOfTrackViewList ]
-
-            for (const trackView of list) {
-                trackView.setDataRange(min, max)
-            }
-
+            trackView.setDataRange(min, max)
         }
 
         this.$minimum_input.val(undefined)

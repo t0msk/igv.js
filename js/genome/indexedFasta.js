@@ -35,16 +35,16 @@ const reservedProperties = new Set(['fastaURL', 'indexURL', 'compressedIndexURL'
 
 class FastaSequence {
 
-    #chromosomeNames
-    chromosomes = new Map()
-
     constructor(reference) {
 
         this.file = reference.fastaURL
         this.indexFile = reference.indexURL || reference.indexFile || this.file + ".fai"
         this.compressedIndexFile = reference.compressedIndexURL || false
         this.withCredentials = reference.withCredentials
-
+        this.chromosomeNames = []
+        this.chromosomes = {}
+        this.sequences = {}
+        this.offsets = {}
 
         // Build a track-like config object from the referenceObject
         const config = {}
@@ -56,27 +56,35 @@ class FastaSequence {
         this.config = config
     }
 
-    get hasChromosomes() {
-        return true
-    }
-
-    getSequenceRecord(chr) {
-        return this.chromosomes.get(chr)
-    }
 
     async init() {
         return this.getIndex()
     }
 
-    get chromosomeNames() {
-        if(!this.#chromosomeNames) {
-            this.#chromosomeNames = Array.from(this.chromosomes.keys())
-        }
-        return this.#chromosomeNames
-    }
+    async getSequence(chr, start, end) {
 
-    getFirstChromosomeName() {
-        return this.chromosomeNames[0]
+        const hasCachedSquence = this.interval && this.interval.contains(chr, start, end)
+
+        if (!hasCachedSquence) {
+
+            // Expand query, to minimum of 50kb
+            let qstart = start
+            let qend = end
+            if ((end - start) < 50000) {
+                const w = (end - start)
+                const center = Math.round(start + w / 2)
+                qstart = Math.max(0, center - 25000)
+                qend = center + 25000
+            }
+
+            const seqBytes = await this.readSequence(chr, qstart, qend)
+            this.interval = new GenomicInterval(chr, qstart, qend, seqBytes)
+        }
+
+        const offset = start - this.interval.start
+        const n = end - start
+        const seq = this.interval.features ? this.interval.features.substr(offset, n) : null
+        return seq
     }
 
     async getIndex() {
@@ -110,8 +118,9 @@ class FastaSequence {
                         bytesPerLine: bytesPerLine
                     }
 
+                    this.chromosomeNames.push(chr)
                     this.index[chr] = indexEntry
-                    this.chromosomes.set(chr, new Chromosome(chr, order++, size))
+                    this.chromosomes[chr] = new Chromosome(chr, order++, size)
                 }
             }
             return this.index
@@ -336,8 +345,7 @@ class FastaSequence {
         if (!idxEntry) {
             console.log("No index entry for chr: " + chr)
             // Tag interval with null so we don't try again
-            // this.interval = new GenomicInterval(chr, qstart, qend, null)
-            this.index[chr] = null
+            this.interval = new GenomicInterval(chr, qstart, qend, null)
             return null
         }
 

@@ -1,8 +1,6 @@
 import "./utils/mockObjects.js"
 import {assert} from 'chai'
 import Browser from "../js/browser.js"
-import FeatureSource from "../js/feature/featureSource.js"
-import search from "../js/search.js"
 
 const MockBrowser = {
     toJSON: function () {

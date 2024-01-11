@@ -25,6 +25,7 @@
 */
 
 import TrackBase from "../trackBase.js"
+import paintAxis from "../util/paintAxis.js"
 import MenuUtils from "../ui/menuUtils.js"
 import HDF5IndexedReader from "./HDF5IndexedReader.js"
 import {CNVpytorVCF} from "./cnvpytorVCF.js"
@@ -46,7 +47,8 @@ class CNVPytorTrack extends TrackBase {
     constructor(config, browser) {
         super(config, browser)
         this.featureType = 'numeric'
-
+        this.paintAxis = paintAxis
+        
         if (!config.max) {
             this.defaultScale = true
             this.autoscale = false
@@ -91,7 +93,7 @@ class CNVPytorTrack extends TrackBase {
     }
 
     get_signal_colors() {
-
+        
         let signal_colors = [
             { singal_name: 'RD_Raw', color: this.colors[0] },
             { singal_name: 'RD_Raw_gc_coor', color: this.colors[1] },
@@ -109,15 +111,22 @@ class CNVPytorTrack extends TrackBase {
             this.featureSource = FeatureSource(this.config, this.browser.genome)
             this.header = await this.getHeader()
 
-            const cnvpytor_obj = new CNVpytorVCF(this.featureSource.reader.features, this.bin_size)
+
+            var allVariants = this.featureSource.reader.features.reduce(function (r, a) {
+                r[a.chr] = r[a.chr] || []
+                r[a.chr].push(a)
+                return r
+            }, Object.create(null))
+
+            const cnvpytor_obj = new CNVpytorVCF(allVariants, this.bin_size)
+            
             let wigFeatures;
             let bafFeatures;
             this.wigFeatures_obj = {}
             this.wigFeatures_obj[this.bin_size] = {}
 
             let dataWigs;
-
-            if(this.cnv_caller == '2D'){
+            if(this.config.cnv_caller == '2D'){
                 
                 dataWigs = await cnvpytor_obj.read_rd_baf('2D')
 
@@ -133,14 +142,14 @@ class CNVPytorTrack extends TrackBase {
                 this.wigFeatures_obj[this.bin_size]['ReadDepth'] = wigFeatures[2]
                 this.available_callers = ['ReadDepth']
             }
-
+            
             this.wigFeatures_obj[this.bin_size]['RD_Raw'] = wigFeatures[0]
             this.wigFeatures_obj[this.bin_size]['RD_Raw_gc_coor'] = wigFeatures[1]
             this.wigFeatures_obj[this.bin_size]['BAF1'] = bafFeatures[0]
             this.wigFeatures_obj[this.bin_size]['BAF2'] = bafFeatures[1]
-
+            
             this.available_bins = [this.bin_size]
-
+            
             this.set_available_callers()
 
         } else {
@@ -250,14 +259,14 @@ class CNVPytorTrack extends TrackBase {
         if (this.flipAxis !== undefined) {
             items.push({
                 label: "Flip y-axis",
-                click: function flipYAxisHandler() {
+                click: () => {
                     this.flipAxis = !this.flipAxis
                     this.trackView.repaintViews()
                 }
             })
         }
 
-        items = items.concat(this.numericDataMenuItems())
+        items = items.concat(MenuUtils.numericDataMenuItems(this.trackView))
 
         items.push('<hr/>')
         items.push("Bin Sizes")
@@ -265,7 +274,7 @@ class CNVPytorTrack extends TrackBase {
             const checkBox = createCheckbox(rd_bin, rd_bin === this.bin_size)
             items.push({
                 object: $(checkBox),
-                click: async function binSizesHandler() {
+                click: async () => {
                     this.bin_size = rd_bin
 
                     await this.recreate_tracks(rd_bin)
@@ -283,7 +292,7 @@ class CNVPytorTrack extends TrackBase {
             const checkBox = createCheckbox(signal_dct[signal_name], signal_name === this.signal_name)
             items.push({
                 object: $(checkBox),
-                click: async function signalTypeHandler() {
+                click: async () => {
                     this.signal_name = signal_name
                     await this.recreate_tracks(this.bin_size)
                     this.clearCachedFeatures()
@@ -301,7 +310,7 @@ class CNVPytorTrack extends TrackBase {
             const checkBox = createCheckbox(cnv_caller, cnv_caller === this.cnv_caller)
             items.push({
                 object: $(checkBox),
-                click: async function cnvCallerHandler() {
+                click: async () => {
                     this.cnv_caller = cnv_caller
                     await this.recreate_tracks(this.bin_size)
                     this.clearCachedFeatures()
@@ -334,7 +343,7 @@ class CNVPytorTrack extends TrackBase {
                 tconf.isMergedTrack = true
                 tconf.features = wig
                 tconf.name = signal_name
-                tconf.color = this.signal_colors.filter(x => x.singal_name === signal_name).map(x => x.color)
+                tconf.color = this.signal_colors.filter(x => x.singal_name === signal_name).map(x => x.color) 
                 const t = await this.browser.createTrack(tconf)
                 if (t) {
                     t.autoscale = false     // Scaling done from merged track
@@ -408,17 +417,17 @@ class CNVPytorTrack extends TrackBase {
         if (this.defaultScale) {
             if (this.signal_name == 'rd_snp') {
                 this.dataRange = {
-                    min: this.config.min || this.dataRange.min || -1,
-                    max: this.config.max || this.dataRange.max || 5
+                    min: this.config.min || this.dataRange.min || -2,
+                    max: this.config.max || this.dataRange.max || 6
                 }
             } else if (this.signal_name == 'rd') {
                 this.dataRange = {
                     min: this.config.min || this.dataRange.min || 0,
-                    max: this.config.max || this.dataRange.max || 5
+                    max: this.config.max || this.dataRange.max || 6
                 }
             } else if (this.signal_name == 'snp') {
                 this.dataRange = {
-                    min: this.config.min || this.dataRange.min || -1,
+                    min: this.config.min || this.dataRange.min || -2,
                     max: this.config.max || this.dataRange.max || 0
                 }
             }
@@ -462,96 +471,8 @@ class CNVPytorTrack extends TrackBase {
                 }
             }
         }
-
-        let props = {
-            'strokeStyle': 'lightgray',
-            'strokeWidth': 0.5
-        }
-        let y = yScale(2);
-        IGVGraphics.dashedLine(options.context, 0, y, options.pixelWidth, y, 5, props)
-        
     }
-    paintAxis(ctx, pixelWidth, pixelHeight) {
 
-        var x1,
-            x2,
-            y1,
-            y2,
-            a,
-            b,
-            reference,
-            shim,
-            font = {
-                'font': 'normal 10px Arial',
-                'textAlign': 'right',
-                'strokeStyle': "black"
-            }
-    
-        if (undefined === this.dataRange || undefined === this.dataRange.max || undefined === this.dataRange.min) {
-            return
-        }
-    
-        let flipAxis = (undefined === this.flipAxis) ? false : this.flipAxis
-    
-        IGVGraphics.fillRect(ctx, 0, 0, pixelWidth, pixelHeight, {'fillStyle': "rgb(255, 255, 255)"})
-    
-        reference = 0.95 * pixelWidth
-        x1 = reference - 8
-        x2 = reference
-    
-        //shim = 0.5 * 0.125;
-        shim = .01
-        y1 = y2 = shim * pixelHeight
-    
-        a = {x: x2, y: y1}
-    
-        // tick
-        IGVGraphics.strokeLine(ctx, x1, y1, x2, y2, font)
-        IGVGraphics.fillText(ctx, prettyPrint(flipAxis ? this.dataRange.min : this.dataRange.max), x1 + 4, y1 + 12, font)
-    
-        //shim = 0.25 * 0.125;
-        y1 = y2 = (1.0 - shim) * pixelHeight
-    
-        b = {x: x2, y: y1}
-    
-        // tick
-        IGVGraphics.strokeLine(ctx, x1, y1, x2, y2, font)
-        IGVGraphics.fillText(ctx, prettyPrint(flipAxis ? this.dataRange.max : this.dataRange.min), x1 + 4, y1 - 4, font)
-    
-        IGVGraphics.strokeLine(ctx, a.x, a.y, b.x, b.y, font)
-    
-        function prettyPrint(number) {
-            // if number >= 100, show whole number
-            // if >= 1 show 1 significant digits
-            // if <  1 show 2 significant digits
-    
-            if (number === 0) {
-                return "0"
-            } else if (Math.abs(number) >= 10) {
-                return number.toFixed()
-            } else if (number %1 == 0){
-                return number.toFixed()
-            }
-            else if (Math.abs(number) >= 1) {
-                return number.toFixed(1)
-            } else {
-                return number.toFixed(2)
-            }
-        }
-        const scaleFactor = this.getScaleFactor(this.dataRange.min, this.dataRange.max, pixelHeight, this.logScale)
-        const yScale = (yValue) => this.logScale
-            ? this.computeYPixelValueInLogScale(yValue, scaleFactor)
-            : this.computeYPixelValue(yValue, scaleFactor)
-
-        const n = Math.ceil((this.dataRange.max - this.dataRange.min) /10)
-        for (let p = Math.ceil(this.dataRange.min+1); p < Math.round(this.dataRange.max - 0.4 ); p += n) {
-            const yp = yScale(p)
-            IGVGraphics.strokeLine(ctx, 45, yp, 50, yp, font) // Offset dashes up by 2 pixel
-            IGVGraphics.fillText(ctx, prettyPrint(flipAxis ? this.dataRange.max-p: p), 44, yp+4, font)
-            
-        }
-
-    }
     popupData(clickState, features) {
 
         const featuresArray = features || clickState.viewport.cachedFeatures

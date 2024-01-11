@@ -1,7 +1,7 @@
 import TrackViewport from "./trackViewport.js"
 import $ from "./vendor/jquery-3.3.1.slim.js"
 import RulerSweeper from "./rulerSweeper.js"
-import GenomeUtils from "./genome/genomeUtils.js"
+import GenomeUtils from "./genome/genome.js"
 import {IGVMath, StringUtils} from "../node_modules/igv-utils/src/index.js"
 import {DOMUtils, Icon} from "../node_modules/igv-ui/dist/igv-ui.js"
 import {getChrColor} from "./bam/bamTrack.js"
@@ -147,7 +147,7 @@ class RulerViewport extends TrackViewport {
 
     mouseMove(event) {
 
-        if (true === this.browser.doShowCursorGuide) {
+        if (true === this.browser.cursorGuideVisible) {
 
             if (undefined === currentViewport) {
                 currentViewport = this

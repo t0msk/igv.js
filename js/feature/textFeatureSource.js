@@ -52,7 +52,6 @@ class TextFeatureSource {
         this.genome = genome
         this.sourceType = (config.sourceType === undefined ? "file" : config.sourceType)
         this.maxWGCount = config.maxWGCount || DEFAULT_MAX_WG_COUNT
-        this.windowFunctions = ["mean", "min", "max", "none"]
 
         const queryableFormats = new Set(["bigwig", "bw", "bigbed", "bb", "biginteract", "biggenepred", "bignarrowpeak", "tdf"])
 
@@ -72,7 +71,6 @@ class TextFeatureSource {
             this.queryable = true
         } else if ("htsget" === config.sourceType) {
             this.reader = new HtsgetVariantReader(config, genome)
-            this.queryable = true
         } else if (config.sourceType === 'ucscservice') {
             this.reader = new UCSCServiceReader(config.source)
             this.queryable = true
@@ -94,8 +92,9 @@ class TextFeatureSource {
             }
         }
 
-        // Flag indicating if features loaded by this source can be searched for by name or attribute
-        this.searchable = config.searchable === true || config.searchableFields !== undefined
+        // Set  searchable unless explicitly turned off, or track uses in indexed or otherwise queryable
+        // feature source.  queryable => features loaded on demand (by query)
+        this.searchable = config.searchable === true || config.searchableFields || (config.searchable !== false && !this.queryable)
 
     }
 
@@ -152,14 +151,11 @@ class TextFeatureSource {
         const queryChr = genome ? genome.getChromosomeName(chr) : chr
         const isWholeGenome = ("all" === queryChr.toLowerCase())
 
-        start = start || 0
-        end = end || Number.MAX_SAFE_INTEGER
-
         // Various conditions that can require a feature load
         //   * view is "whole genome" but no features are loaded
         //   * cache is disabled
         //   * cache does not contain requested range
-        // const containsRange = this.featureCache.containsRange(new GenomicInterval(queryChr, start, end))
+       // const containsRange = this.featureCache.containsRange(new GenomicInterval(queryChr, start, end))
         if ((isWholeGenome && !this.wgFeatures && this.supportsWholeGenome()) ||
             this.config.disableCache ||
             !this.featureCache ||
@@ -226,6 +222,11 @@ class TextFeatureSource {
 
         if (features) {
 
+            if (this.config.assembleGFF !== false &&
+                ("gtf" === this.config.format || "gff3" === this.config.format || "gff" === this.config.format)) {
+                features = (new GFFHelper(this.config)).combineFeatures(features, genomicInterval)
+            }
+
             // Assign overlapping features to rows
             if (this.config.format !== "wig" && this.config.type !== "junctions") {
                 const maxRows = this.config.maxRows || Number.MAX_SAFE_INTEGER
@@ -237,38 +238,10 @@ class TextFeatureSource {
 
             // If track is marked "searchable"< cache features by name -- use this with caution, memory intensive
             if (this.searchable) {
-                this.addFeaturesToDB(features, this.config)
+                this.genome.addFeaturesToDB(features, this.config)
             }
         } else {
             this.featureCache = new FeatureCache([], genomicInterval)     // Empty cache
-        }
-    }
-
-    addFeaturesToDB(featureList, config) {
-        if (!this.featureMap) {
-            this.featureMap = new Map()
-        }
-        const searchableFields = config.searchableFields || ["name"]
-        for (let feature of featureList) {
-            for (let field of searchableFields) {
-                let key
-                if(typeof feature.getAttributeValue === 'function') {
-                    key = feature.getAttributeValue(field)
-                }
-                if(!key) {
-                    key = feature[field]
-                }
-                if (key) {
-                    key = key.replaceAll(' ', '+')
-                    this.featureMap.set(key.toUpperCase(), feature)
-                }
-            }
-        }
-    }
-
-     search(term) {
-        if(this.featureMap) {
-            return this.featureMap.get(term.toUpperCase())
         }
     }
 }

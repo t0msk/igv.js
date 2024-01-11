@@ -6,7 +6,7 @@ class ROIMenu {
         this.browser = browser
 
         // container
-        this.container = DOMUtils.div({ class: 'igv-roi-menu' })
+        this.container = DOMUtils.div({ class: 'igv-roi-menu-next-gen' })
         parent.appendChild(this.container)
 
         // header
@@ -54,7 +54,7 @@ class ROIMenu {
 
             const callback = () => {
 
-                const value = this.browser.inputDialog.value || ''
+                const value = this.browser.inputDialog.input.value || ''
                 feature.name = value.trim()
 
                 this.container.style.display = 'none'

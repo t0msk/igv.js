@@ -245,7 +245,7 @@ class GWASTrack extends TrackBase {
     }
 
     menuItemList() {
-        return this.numericDataMenuItems()
+        return MenuUtils.numericDataMenuItems(this.trackView)
     }
 
     doAutoscale(featureList) {

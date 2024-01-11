@@ -31,11 +31,12 @@ suite("testCRAM", function () {
         }
 
         const cramReader = new CramReader({
-                url: 'test/data/cram/ce_5.tmp.cram',
-                indexURL: 'test/data/cram/ce_5.tmp.cram.crai'
-            },
-            genome
-        )
+                url: 'test/data/cram/ce_5.tmp.cram'),
+            indexURL: 'test/data/cram/ce_5.tmp.cram.crai'
+    )
+    },
+        genome
+    )
 
 
         const header = await cramReader.getHeader()
@@ -48,9 +49,9 @@ suite("testCRAM", function () {
     test("CRAM alignments", async function () {
         // Mock genome object
         const fasta = new FastaSequence({
-            fastaURL: 'test/data/cram/hg19_test.fasta',
+                fastaURL: 'test/data/cram/hg19_test.fasta'),
             indexed: false
-        })
+    })
 
 
         await fasta.init()
@@ -63,9 +64,9 @@ suite("testCRAM", function () {
         }
 
         const cramReader = new CramReader({
-            url: 'test/data/cram/na12889.cram',
+                url: 'test/data/cram/na12889.cram'),
             indexURL: 'test/data/cram/na12889.cram.crai'
-
+    )
     },
         genome
     )
@@ -119,9 +120,9 @@ suite("testCRAM", function () {
     test("CRAM lossy alignments - in slice mate", async function () {
 
         const cramReader = new CramReader({
-                url: 'test/data/cram/na12889_lossy.cram',
-            indexURL: 'test/data/cram/na12889_lossy.cram.crai'}
-    )
+                url: 'test/data/cram/na12889_lossy.cram'),
+            indexURL: 'test/data/cram/na12889_lossy.cram.crai'
+    ),
         seqFetch: function (seqId, start, end) {
             var fakeSeq = ''
             for (let i = start; i <= end; i += 1) {

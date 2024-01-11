@@ -5,14 +5,14 @@ import {createGenome} from "./utils/Genome.js"
 const genome = createGenome()
 import {parseLocusString, searchWebService} from "../js/search.js"
 import search from "../js/search.js"
-import FeatureSource from "../js/feature/featureSource.js"
 
 suite("testSearch", function () {
 
+    genome.addFeaturesToDB([{chr: "chrX", name: "FOO BAR", start: 1, end: 2}], {})   // for testing feature names with spaces
+
+
     const browser = {
         genome: genome,
-
-        tracks: [],
 
         config: {
             // This looks redundant, but its important for the test
@@ -37,27 +37,33 @@ suite("testSearch", function () {
             endField: "end",
             geneField: "gene",
             snpField: "snp"
-        },
-
-        isSoftclipped: () => false
-
+        }
     }
 
     test("locus strings", function () {
         const s1 = "chr1:100-200"
-        const locus1 = parseLocusString(s1)
+        const locus1 = parseLocusString(browser, s1)
         assert.equal(locus1.chr, "chr1")
         assert.equal(locus1.start, 99)
         assert.equal(locus1.end, 200)
 
+        // Chr name alias
+        const s2 = "1:100-200"
+        const locus2 = parseLocusString(browser, s2)
+        assert.equal(locus2.chr, "chr1")
+        assert.equal(locus2.start, 99)
+        assert.equal(locus2.end, 200)
 
         // Single base
         const s3 = "1:100"
-        const locus3 = parseLocusString(s3)
-        assert.equal(locus3.chr, "1")
+        const locus3 = parseLocusString(browser, s3)
+        assert.equal(locus3.chr, "chr1")
         assert.equal(locus3.start, 79)
         assert.equal(locus3.end, 120)
 
+        const s4 = "egfr"
+        const locus4 = parseLocusString(browser, s4)
+        assert.equal(locus4, undefined)
     })
 
     test("webservice", async function () {
@@ -70,6 +76,7 @@ suite("testSearch", function () {
         assert.equal(locus.chr, "chr8")
         assert.equal(locus.start, 127735432)
         assert.equal(locus.end, 127742951)
+        assert.equal(locus.locusSearchString, gene)
     })
 
     test("search (main function)", async function () {
@@ -86,47 +93,54 @@ suite("testSearch", function () {
         assert.equal(locus1.chr, "chr1")
         assert.equal(locus1.start, 99)
         assert.equal(locus1.end, 200)
+        assert.equal(locus1.locusSearchString, s1)
 
         const locus2 = results[1]
         assert.equal(locus2.chr, "chr8")
         assert.equal(locus2.start, 127735432)
         assert.equal(locus2.end, 127742951)
+        assert.equal(locus2.locusSearchString, s2)
 
         const locus3 = results[2]
         assert.equal(locus3.chr, "chr1")
         assert.equal(locus3.start, 155185822)
         assert.equal(locus3.end, 155192915)
+        assert.equal(locus3.locusSearchString, s3)
     })
 
-    test("search name with spaces from bed file", async function () {
+    test("search with spaces", async function () {
 
-        const config = {
-            format: "bed",
-            delimiter: "\t",
-            url: "test/data/bed/names_with_spaces.bed",
-            indexed: false,
-            searchable: true,
-        }
-        const featureSource = FeatureSource(config)
-        await featureSource.getFeatures({chr: "1", start: 0, end: Number.MAX_SAFE_INTEGER})
+        this.timeout(20000)
+        const s4 = "foo bar"
+        const results = await search(browser, s4)
+        const locus4 = results[0]
+        assert.equal(locus4.chr, "chrX")
+        assert.equal(locus4.start, 1)
+        assert.equal(locus4.end, 2)
 
-        const mockBrowser = {
-            genome: {
-                loadChromosome: async (chr) => chr,
-                getChromosomeName: (chr) => chr,
-                getChromosome: (chr) => {return {name: chr, bpLenght: 0}}
-            },
-            tracks: [{
-                featureSource: featureSource,
-                searchable: true,
-                search: (term) => featureSource.search(term)
-            }]
-        }
-
-        const found = await search(mockBrowser, "kan2 marker")
-        assert.ok(found)
     })
 
+    // TODO -- The Ensembl webservice does not work reliably
+    //
+    // test("custom webservice", async function () {
+    //
+    //
+    //
+    //     browser.genome = macacaGenome;
+    //     browser.searchConfig = {
+    //         url: 'https://rest.ensembl.org/lookup/symbol/macaca_fascicularis/$FEATURE$?content-type=application/json',
+    //         chromosomeField: 'seq_region_name',
+    //         displayName: 'display_name'
+    //     }
+    //
+    //     // olig3 => 4:41,813,339-41,814,160
+    //     const gene = "olig3";
+    //     const locus = await searchWebService(browser, gene, browser.searchConfig);
+    //     assert.equal(locus.chr, "4");
+    //     assert.equal(locus.start, 41813338);
+    //     assert.equal(locus.end, 41814160);
+    // });
+    //
 
 })
 

@@ -28,14 +28,12 @@ import pack from "../feature/featurePacker.js"
 
 class BWSource {
 
-    queryable = true
-    wgValues = {}
-    windowFunctions = ["mean", "min", "max"]
-
     constructor(config, genome) {
         this.reader = new BWReader(config, genome)
         this.genome = genome
         this.format = config.format || "bigwig"
+        this.wgValues = {}
+        this.queryable = true
     }
 
     async getFeatures({chr, start, end, bpPerPixel, windowFunction}) {
@@ -56,25 +54,28 @@ class BWSource {
         return this.reader.loadHeader()
     }
 
-    async defaultVisibilityWindow() {
-        if (this.reader.type === "bigwig") {
-            return -1
+    getDefaultRange() {
+        if (this.reader.totalSummary !== undefined) {
+            return this.reader.totalSummary.defaultRange
         } else {
-            return this.reader.featureDensity ?  Math.floor(10000 / this.reader.featureDensity) : -1
+            return undefined
         }
+    }
 
+    async defaultVisibilityWindow() {
+        return this.reader.defaultVisibilityWindow
     }
 
     async getWGValues(windowFunction) {
 
-        const numberOfBins = 1000      // This doesn't need to be precise
+        const nominalScreenWidth = 1000      // This doesn't need to be precise
         const genome = this.genome
 
         if (this.wgValues[windowFunction]) {
             return this.wgValues[windowFunction]
         } else {
 
-            const bpPerPixel = genome.getGenomeLength() / numberOfBins
+            const bpPerPixel = genome.getGenomeLength() / nominalScreenWidth
             const features = await this.reader.readWGFeatures(bpPerPixel, windowFunction)
             let wgValues = []
             for (let f of features) {
@@ -97,14 +98,6 @@ class BWSource {
 
     async trackType() {
         return this.reader.getTrackType()
-    }
-
-    get searchable() {
-        return this.reader.searchable
-    }
-
-    async search(term) {
-        return this.reader.search(term)
     }
 }
 

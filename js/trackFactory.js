@@ -25,7 +25,6 @@ const trackFunctions =
         ['seg', (config, browser) => new SegTrack(config, browser)],
         ['mut', (config, browser) => new SegTrack(config, browser)],
         ['maf', (config, browser) => new SegTrack(config, browser)],
-        ['shoebox', (config, browser) => new SegTrack(config, browser)],
         ['wig', (config, browser) => new WigTrack(config, browser)],
         ['merged', (config, browser) => new MergedTrack(config, browser)],
         ['alignment', (config, browser) => new BAMTrack(config, browser)],
@@ -43,13 +42,16 @@ const trackFunctions =
 
 
 /**
- * Return a track of the given type, passing configuration and a point to the IGV "Browser" object to its constructor function*
- * @param type -- track type (string)
- * @param config -- track configuration object
- * @param browser -- the IGV "Browser" object
- * @returns {IdeogramTrack|undefined}
+ * Add a track constructor  the the factory lookup table.
+ *
+ * @param type
+ * @param track
  */
-function getTrack (type, config, browser) {
+const addTrackCreatorFunction = function (type, track) {
+    trackFunctions.set(type, track)
+}
+
+const getTrack = function (type, config, browser) {
 
     let trackKey
     switch (type) {
@@ -77,25 +79,10 @@ function getTrack (type, config, browser) {
         undefined
 }
 
-/**
- * Add a track creator function to the factory lookup table.  Legacy function, superceded by registerTrackClass.
- *
- * @param type
- * @param track
- */
-function registerTrackClass(type, trackClass) {
-    trackFunctions.set(type, (config, browser) => new trackClass(config, browser))
-}
-
-
-
-function registerTrackCreatorFunction (type, track) {
-    trackFunctions.set(type, track)
-}
-
-export {
-    getTrack,
+export default {
+    tracks: trackFunctions,
+    addTrack: addTrackCreatorFunction,
     trackFunctions,
-    registerTrackClass,
-    registerTrackCreatorFunction
+    addTrackCreatorFunction,
+    getTrack
 }

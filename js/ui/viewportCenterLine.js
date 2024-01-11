@@ -37,7 +37,7 @@ class ViewportCenterLine {
         this.container = DOMUtils.div({class: 'igv-center-line'})
         column.appendChild(this.container)
 
-        if (browser.doShowCenterLine) {
+        if (browser.isCenterLineVisible) {
             this.show()
         } else {
             this.hide()

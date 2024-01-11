@@ -24,18 +24,15 @@
  */
 
 
+// TODO -- big endian?
 
 class BinaryParser {
-    constructor(dataView, littleEndian = true) {
+    constructor(dataView, littleEndian) {
 
-        this.littleEndian = littleEndian
+        this.littleEndian = littleEndian !== undefined ? littleEndian : true
         this.position = 0
         this.view = dataView
         this.length = dataView.byteLength
-    }
-
-    setPosition(position) {
-        this.position = position
     }
 
     available() {
@@ -51,33 +48,42 @@ class BinaryParser {
     }
 
     getByte() {
-        const retValue = this.view.getUint8(this.position, this.littleEndian)
+        var retValue = this.view.getUint8(this.position, this.littleEndian)
         this.position++
         return retValue
     }
 
     getShort() {
-        const retValue = this.view.getInt16(this.position, this.littleEndian)
+
+        var retValue = this.view.getInt16(this.position, this.littleEndian)
         this.position += 2
         return retValue
     }
 
     getUShort() {
-        const retValue = this.view.getUint16(this.position, this.littleEndian)
+
+        // var byte1 = this.getByte(),
+        //     byte2 = this.getByte(),
+        //     retValue = ((byte2 << 24 >>> 16) + (byte1 << 24 >>> 24));
+        //     return retValue;
+
+        //
+        var retValue = this.view.getUint16(this.position, this.littleEndian)
         this.position += 2
         return retValue
     }
 
 
     getInt() {
-        const retValue = this.view.getInt32(this.position, this.littleEndian)
+
+        var retValue = this.view.getInt32(this.position, this.littleEndian)
         this.position += 4
         return retValue
     }
 
 
     getUInt() {
-        const retValue = this.view.getUint32(this.position, this.littleEndian)
+        var retValue = this.view.getUint32(this.position, this.littleEndian)
         this.position += 4
         return retValue
     }
@@ -85,6 +91,7 @@ class BinaryParser {
     getLong() {
 
         // DataView doesn't support long. So we'll try manually
+
         var b = []
         b[0] = this.view.getUint8(this.position)
         b[1] = this.view.getUint8(this.position + 1)
@@ -95,7 +102,7 @@ class BinaryParser {
         b[6] = this.view.getUint8(this.position + 6)
         b[7] = this.view.getUint8(this.position + 7)
 
-        let value = 0
+        var value = 0
         if (this.littleEndian) {
             for (let i = b.length - 1; i >= 0; i--) {
                 value = (value * 256) + b[i]
@@ -105,14 +112,16 @@ class BinaryParser {
                 value = (value * 256) + b[i]
             }
         }
+
+
         this.position += 8
         return value
     }
 
     getString(len) {
 
-        let s = ""
-        let c
+        var s = ""
+        var c
         while ((c = this.view.getUint8(this.position++)) !== 0) {
             s += String.fromCharCode(c)
             if (len && s.length === len) break
@@ -122,10 +131,26 @@ class BinaryParser {
 
     getFixedLengthString(len) {
 
-        let s = ""
-        for (let i = 0; i < len; i++) {
-            const c = this.view.getUint8(this.position++)
+        var s = ""
+        var i
+        var c
+        for (i = 0; i < len; i++) {
+            c = this.view.getUint8(this.position++)
             if (c > 0) {
+                s += String.fromCharCode(c)
+            }
+        }
+        return s
+    }
+
+    getFixedLengthTrimmedString(len) {
+
+        var s = ""
+        var i
+        var c
+        for (i = 0; i < len; i++) {
+            c = this.view.getUint8(this.position++)
+            if (c > 32) {
                 s += String.fromCharCode(c)
             }
         }
@@ -149,6 +174,7 @@ class BinaryParser {
     }
 
     skip(n) {
+
         this.position += n
         return this.position
     }
@@ -157,7 +183,6 @@ class BinaryParser {
     /**
      * Return a BGZip (bam and tabix) virtual pointer
      * TODO -- why isn't 8th byte used ?
-     * TODO -- does endian matter here ?
      * @returns {*}
      */
     getVPointer() {
@@ -172,7 +197,11 @@ class BinaryParser {
             block = byte6 + byte5 + byte4 + byte3 + byte2
         this.position += 8
 
+        //       if (block == 0 && offset == 0) {
+        //           return null;
+        //       } else {
         return new VPointer(block, offset)
+        //       }
     }
 }
 
