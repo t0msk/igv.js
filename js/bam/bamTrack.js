@@ -795,6 +795,8 @@ class AlignmentTrack {
         this.skippedColor = config.skippedColor || "rgb(150, 170, 170)"
         this.pairConnectorColor = config.pairConnectorColor
 
+        this.readNameTextColor = config.readNameTextColor || "rgb(0, 0, 0)"
+
         this.smallTLENColor = config.smallTLENColor || config.smallFragmentLengthColor || "rgb(0, 0, 150)"
         this.largeTLENColor = config.largeTLENColor || config.largeFragmentLengthColor || "rgb(200, 0, 0)"
 
@@ -1144,7 +1146,22 @@ class AlignmentTrack {
                             yRect]
 
                     }
+
+                    /*IGVGraphics.fillText(ctx, "G", blockStartPixel, yRect, {
+                        'font': 'normal 10px monospace',
+                        'fillStyle': this.readNameTextColor,
+                    })*/
+
                     IGVGraphics.fillPolygon(ctx, xListPixel, yListPixel, {fillStyle: alignmentColor})
+
+                    // render Read Name
+                    if (alignment.readName) {
+                        const fontHeight = Math.min(10, alignmentHeight)
+                        ctx.font = '' + fontHeight + 'px sans-serif'
+                        var center = blockStartPixel + ((blockEndPixel - blockStartPixel) / 2.0)
+
+                        IGVGraphics.strokeText(ctx, "Read Name: "+alignment.readName, center, fontHeight - 1 + yRect, {strokeStyle: this.readNameTextColor})
+                    }
 
                     if (strokeOutline) {
                         IGVGraphics.strokePolygon(ctx, xListPixel, yListPixel, {strokeStyle: blockOutlineColor})
